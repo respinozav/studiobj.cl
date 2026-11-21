@@ -48,19 +48,24 @@ export interface ProductVariantItem {
   color: string;
   color_hex: string;
   tallas: string[];
+  imagen_url: string;
   fotosCount: number;
 }
 
 export const getProductAllVariants = (p: Producto): ProductVariantItem[] => {
   if (p.variantes && Array.isArray(p.variantes) && p.variantes.length > 0) {
-    return p.variantes.map((v) => ({
-      color: v.color || p.color || 'Único',
-      color_hex: v.color_hex || getColorHex(v.color || p.color),
-      tallas: v.tallas
-        ? v.tallas.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
-        : (p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA']),
-      fotosCount: (v.imagenes || []).length,
-    }));
+    return p.variantes.map((v) => {
+      const imgUrl = (v.imagenes && v.imagenes.length > 0) ? v.imagenes[0] : (p.imagen_base64 || '');
+      return {
+        color: v.color || p.color || 'Único',
+        color_hex: v.color_hex || getColorHex(v.color || p.color),
+        tallas: v.tallas
+          ? v.tallas.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
+          : (p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA']),
+        imagen_url: imgUrl,
+        fotosCount: (v.imagenes || []).length || (p.imagen_base64 ? 1 : 0),
+      };
+    });
   }
   const colorParts = p.color ? p.color.split(/[/,]/).map((s) => s.trim()).filter(Boolean) : ['Único'];
   const tallasArr = p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA'];
@@ -68,6 +73,7 @@ export const getProductAllVariants = (p: Producto): ProductVariantItem[] => {
     color: c,
     color_hex: getColorHex(c),
     tallas: tallasArr,
+    imagen_url: p.imagen_base64 || '',
     fotosCount: p.imagen_base64 ? 1 : 0,
   }));
 };
@@ -1635,78 +1641,75 @@ export const AdminPanel: React.FC = () => {
                             )}
                           </button>
 
-                          {/* Cortina Desplegable Móvil */}
+                          {/* Cortina Desplegable Móvil: Listado de Imagen, Color y Tallas */}
                           {isExpanded && (
                             <div className="mt-3 p-3 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/20 space-y-3 animate-fadeIn">
-                              {/* Foto con visor */}
-                              <div className="flex items-center gap-3">
-                                <div
-                                  onClick={() => openProductLightbox(p, 0)}
-                                  className="relative group cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
-                                  title="Tocar para ver fotos a pantalla completa"
-                                >
-                                  <img
-                                    src={p.imagen_base64}
-                                    alt={p.nombre}
-                                    className="w-16 h-20 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/30 shadow-md"
-                                  />
-                                  <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs text-[#D9A6B8] text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-[#D9A6B8]/30 flex items-center gap-0.5">
-                                    <ZoomIn className="w-2.5 h-2.5" />
-                                    <span>{getProductAllImages(p).length}</span>
-                                  </div>
-                                </div>
-                                <div>
-                                  <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block">
-                                    Fotos del Producto
-                                  </span>
-                                  <p className="text-[11px] text-gray-300 mt-0.5">
-                                    Toca la foto para abrir el visor en alta definición con zoom y carrusel.
-                                  </p>
-                                </div>
+                              <div className="flex items-center justify-between pb-1 border-b border-[#D9A6B8]/15">
+                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider">
+                                  Variantes ({getProductAllVariants(p).length} colores):
+                                </span>
+                                <span className="text-[9px] text-gray-400">
+                                  Toca la foto para ampliar
+                                </span>
                               </div>
 
-                              {/* Colores Asociados (punto y nombre) */}
-                              <div>
-                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block mb-1.5">
-                                  Colores ({getProductAllVariants(p).length}):
-                                </span>
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  {getProductAllVariants(p).map((v, vIdx) => (
-                                    <div
-                                      key={vIdx}
-                                      onClick={() => {
-                                        const allImgs = getProductAllImages(p);
-                                        const targetIdx = allImgs.findIndex((img) => img.color === v.color);
-                                        openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
-                                      }}
-                                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#261521] border border-[#D9A6B8]/25 cursor-pointer active:scale-95"
-                                    >
-                                      <span
-                                        className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-sm flex-shrink-0"
-                                        style={{ backgroundColor: v.color_hex }}
-                                      />
-                                      <span className="text-xs text-gray-200 font-medium">{v.color}</span>
+                              <div className="divide-y divide-[#D9A6B8]/15 space-y-3">
+                                {getProductAllVariants(p).map((v, vIdx) => {
+                                  const allImgs = getProductAllImages(p);
+                                  const targetIdx = allImgs.findIndex((img) => img.color === v.color);
+
+                                  return (
+                                    <div key={vIdx} className="pt-3 first:pt-0 flex items-start gap-3">
+                                      {/* 1. Imagen del color */}
+                                      <div
+                                        onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                        className="relative cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
+                                        title="Tocar para ampliar foto"
+                                      >
+                                        <img
+                                          src={v.imagen_url}
+                                          alt={`${p.nombre} - ${v.color}`}
+                                          className="w-14 h-18 object-cover rounded-lg bg-[#261521] border border-[#D9A6B8]/30 shadow-md"
+                                        />
+                                        <div className="absolute bottom-1 right-1 bg-black/80 text-[#D9A6B8] p-0.5 rounded border border-[#D9A6B8]/30">
+                                          <ZoomIn className="w-2.5 h-2.5" />
+                                        </div>
+                                      </div>
+
+                                      {/* 2. Color de la imagen + 3. Tallas */}
+                                      <div className="flex-1 min-w-0">
+                                        <div
+                                          onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                          className="flex items-center gap-2 cursor-pointer mb-1.5"
+                                        >
+                                          <span
+                                            className="w-3.5 h-3.5 rounded-full border border-white/60 shadow-sm flex-shrink-0"
+                                            style={{ backgroundColor: v.color_hex }}
+                                          />
+                                          <span className="font-semibold text-white text-xs truncate">
+                                            {v.color}
+                                          </span>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                                            Tallas:
+                                          </span>
+                                          <div className="flex flex-wrap gap-1">
+                                            {v.tallas.map((t, tIdx) => (
+                                              <span
+                                                key={tIdx}
+                                                className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[9px] font-bold text-[#D9A6B8]"
+                                              >
+                                                {t}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
                                     </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Tallas Asociadas */}
-                              <div>
-                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block mb-1.5">
-                                  Tallas Disponibles:
-                                </span>
-                                <div className="flex flex-wrap items-center gap-1">
-                                  {getProductAllSizes(p).map((t, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
-                                    >
-                                      <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-                                      {t}
-                                    </span>
-                                  ))}
-                                </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
@@ -1855,105 +1858,90 @@ export const AdminPanel: React.FC = () => {
                                 </td>
                               </tr>
 
-                              {/* Fila Cortina Desplegada con Foto, Color y Tallas */}
+                              {/* Fila Cortina Desplegada con Listado de Variantes: Imagen, Color de la Imagen y Tallas */}
                               {isExpanded && (
                                 <tr className="bg-[#1C0F18]/90 border-b border-[#D9A6B8]/25 transition-all">
                                   <td colSpan={7} className="p-4 sm:p-5">
-                                    <div className="flex flex-col md:flex-row items-start gap-6 bg-[#261521]/95 p-4 rounded-xl border border-[#D9A6B8]/25 shadow-xl">
-                                      {/* FOTO: Miniaturas con visor Lightbox */}
-                                      <div className="flex flex-col items-center gap-2 flex-shrink-0">
-                                        <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider">
-                                          Fotos ({getProductAllImages(p).length})
-                                        </span>
-                                        <div
-                                          onClick={() => openProductLightbox(p, 0)}
-                                          className="relative group cursor-pointer inline-block"
-                                          title="Pinchar para ver a pantalla completa (Lightbox HD)"
-                                        >
-                                          <img
-                                            src={p.imagen_base64}
-                                            alt={p.nombre}
-                                            className="w-20 h-24 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/30 group-hover:border-[#D9A6B8] transition-all group-hover:scale-105 shadow-md"
-                                          />
-                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white">
-                                            <ZoomIn className="w-5 h-5 text-[#D9A6B8]" />
-                                          </div>
-                                          <span className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs text-[#D9A6B8] text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-[#D9A6B8]/30 flex items-center gap-0.5">
-                                            <ZoomIn className="w-2.5 h-2.5" />
-                                            <span>Ver HD</span>
+                                    <div className="bg-[#261521]/95 p-4 rounded-xl border border-[#D9A6B8]/25 shadow-xl space-y-3">
+                                      <div className="flex items-center justify-between pb-2.5 border-b border-[#D9A6B8]/15">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs uppercase tracking-wider font-bold text-[#D9A6B8]">
+                                            Variantes de {p.nombre}
+                                          </span>
+                                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1C0F18] text-gray-300 border border-[#D9A6B8]/20 font-semibold">
+                                            {getProductAllVariants(p).length} {getProductAllVariants(p).length === 1 ? 'color' : 'colores'}
                                           </span>
                                         </div>
-
-                                        {/* Miniaturas de variantes si tiene más de 1 imagen */}
-                                        {getProductAllImages(p).length > 1 && (
-                                          <div className="flex items-center gap-1.5 mt-1">
-                                            {getProductAllImages(p).slice(0, 5).map((img, idx) => (
-                                              <button
-                                                key={idx}
-                                                onClick={() => openProductLightbox(p, idx, img.color)}
-                                                className="w-7 h-9 rounded overflow-hidden border border-white/20 hover:border-[#D9A6B8] transition-all hover:scale-105"
-                                                title={`Foto ${idx + 1} (${img.color})`}
-                                              >
-                                                <img src={img.url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
-                                              </button>
-                                            ))}
-                                          </div>
-                                        )}
+                                        <span className="text-[11px] text-gray-400">
+                                          Pincha la imagen para ver en alta definición (Lightbox)
+                                        </span>
                                       </div>
 
-                                      {/* COLOR: Puntos de color y nombre */}
-                                      <div className="flex-1 min-w-[220px] space-y-2 md:border-l border-[#D9A6B8]/15 md:pl-5">
-                                        <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block">
-                                          Colores Asociados ({getProductAllVariants(p).length})
-                                        </span>
-                                        <div className="flex flex-wrap gap-2">
-                                          {getProductAllVariants(p).map((v, vIdx) => (
+                                      {/* Listado: Imagen | Color de la imagen | Tallas */}
+                                      <div className="divide-y divide-[#D9A6B8]/15">
+                                        {getProductAllVariants(p).map((v, vIdx) => {
+                                          const allImgs = getProductAllImages(p);
+                                          const targetIdx = allImgs.findIndex((img) => img.color === v.color);
+
+                                          return (
                                             <div
                                               key={vIdx}
-                                              onClick={() => {
-                                                const allImgs = getProductAllImages(p);
-                                                const targetIdx = allImgs.findIndex((img) => img.color === v.color);
-                                                openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
-                                              }}
-                                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/20 hover:border-[#D9A6B8]/60 cursor-pointer group/col transition-all"
-                                              title={`Pinchar para ver foto de color ${v.color}`}
+                                              className="py-3 first:pt-1 last:pb-1 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-[#1C0F18]/40 px-3 rounded-xl transition-colors"
                                             >
-                                              <span
-                                                className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-inner flex-shrink-0 group-hover/col:scale-110 transition-transform"
-                                                style={{ backgroundColor: v.color_hex }}
-                                              />
-                                              <span className="text-xs text-gray-200 font-semibold group-hover/col:text-[#D9A6B8] transition-colors whitespace-nowrap">
-                                                {v.color}
-                                              </span>
-                                              <span className="text-[10px] text-gray-400 font-mono">
-                                                ({v.tallas.join(', ')})
-                                              </span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
+                                              {/* 1. Imagen del color */}
+                                              <div
+                                                onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                                className="relative group cursor-pointer flex-shrink-0"
+                                                title={`Pinchar para ampliar imagen de ${v.color}`}
+                                              >
+                                                <img
+                                                  src={v.imagen_url}
+                                                  alt={`${p.nombre} - ${v.color}`}
+                                                  className="w-16 h-20 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/30 group-hover:border-[#D9A6B8] group-hover:scale-105 transition-all shadow-md"
+                                                />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white">
+                                                  <ZoomIn className="w-5 h-5 text-[#D9A6B8]" />
+                                                </div>
+                                              </div>
 
-                                      {/* TALLAS: Badges de tallas */}
-                                      <div className="flex-1 min-w-[180px] space-y-2 md:border-l border-[#D9A6B8]/15 md:pl-5">
-                                        <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block">
-                                          Tallas del Producto
-                                        </span>
-                                        <div className="flex flex-wrap gap-1.5">
-                                          {getProductAllSizes(p).map((t, idx) => (
-                                            <span
-                                              key={idx}
-                                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-gray-200"
-                                            >
-                                              <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
-                                              {t}
-                                            </span>
-                                          ))}
-                                        </div>
-                                        {p.descripcion && (
-                                          <p className="text-[11px] text-gray-400 mt-2 line-clamp-2 leading-relaxed italic">
-                                            "{p.descripcion}"
-                                          </p>
-                                        )}
+                                              {/* 2. Color de la imagen (Punto y Nombre) */}
+                                              <div
+                                                onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                                className="flex items-center gap-3 cursor-pointer group/col flex-1 min-w-[200px]"
+                                                title={`Pinchar para ver foto de ${v.color}`}
+                                              >
+                                                <span
+                                                  className="w-5 h-5 rounded-full border-2 border-white/60 shadow-md flex-shrink-0 group-hover/col:scale-110 transition-transform"
+                                                  style={{ backgroundColor: v.color_hex }}
+                                                />
+                                                <div>
+                                                  <span className="font-semibold text-white text-base group-hover/col:text-[#D9A6B8] transition-colors block">
+                                                    {v.color}
+                                                  </span>
+                                                  <span className="text-[10px] text-gray-400">Color de la imagen</span>
+                                                </div>
+                                              </div>
+
+                                              {/* 3. Tallas de este color */}
+                                              <div className="flex-1 min-w-[220px]">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
+                                                  Tallas disponibles:
+                                                </span>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                  {v.tallas.map((t, tIdx) => (
+                                                    <span
+                                                      key={tIdx}
+                                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-[#D9A6B8]"
+                                                    >
+                                                      <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
+                                                      {t}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     </div>
                                   </td>
