@@ -26,6 +26,7 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sparkles,
   Copy,
   Save,
@@ -131,6 +132,21 @@ export const AdminPanel: React.FC = () => {
     setLightboxImages(urlList);
     setLightboxInitialIndex(initialIndex);
     setLightboxColorName(colorName || allImgs[initialIndex]?.color || p.color);
+  };
+
+  // Estados para fila tipo cortina (acordeón desplegable de productos)
+  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+
+  const toggleProductExpand = (id: string) => {
+    setExpandedProducts((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   // Estados para Módulo Portada / Hero
@@ -1550,108 +1566,154 @@ export const AdminPanel: React.FC = () => {
             {/* --- TAB PRODUCTOS --- */}
             {activeTab === 'productos' && (
               <div className="space-y-4">
-                {/* 1. Vista Móvil (Cards Táctiles Mobile-First) */}
+                {/* 1. Vista Móvil (Cards Táctiles Mobile-First con Cortina) */}
                 <div className="grid grid-cols-1 gap-3 md:hidden">
-                  {paginatedProductos.map((p) => (
-                    <div
-                      key={p.id}
-                      className="glass-card rounded-xl border border-[#D9A6B8]/20 bg-[#261521]/95 p-3.5 shadow-lg flex flex-col justify-between gap-3"
-                    >
-                      <div className="flex gap-3 items-start">
-                        {/* Miniatura Táctil con Visor */}
-                        <div
-                          onClick={() => openProductLightbox(p, 0)}
-                          className="relative group cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
-                          title="Tocar para ver todas las fotos a pantalla completa"
-                        >
-                          <img
-                            src={p.imagen_base64}
-                            alt={p.nombre}
-                            className="w-16 h-20 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/25 shadow-md"
-                          />
-                          <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs text-[#D9A6B8] text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-[#D9A6B8]/30 flex items-center gap-0.5 shadow-sm">
-                            <ZoomIn className="w-2.5 h-2.5" />
-                            <span>{getProductAllImages(p).length}</span>
-                          </div>
-                        </div>
-                        {/* Info Principal */}
-                        <div className="flex-1 min-w-0">
+                  {paginatedProductos.map((p) => {
+                    const isExpanded = expandedProducts.has(p.id);
+                    return (
+                      <div
+                        key={p.id}
+                        className="glass-card rounded-xl border border-[#D9A6B8]/20 bg-[#261521]/95 p-3.5 shadow-lg flex flex-col justify-between gap-3"
+                      >
+                        <div>
+                          {/* Categoría y Etiquetas */}
                           <div className="flex items-center justify-between gap-1 mb-1">
                             <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider truncate">
                               {p.categoria_nombre || 'Sin categoría'}
                             </span>
-                            {p.etiqueta && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#311B2B] text-[#D9A6B8] border border-[#D9A6B8]/30 font-bold whitespace-nowrap">
-                                {p.etiqueta}
-                              </span>
-                            )}
-                          </div>
-
-                          <h3 className="font-editorial text-base font-semibold text-white leading-tight">
-                            {p.nombre}
-                          </h3>
-
-                          {/* Colores Asociados (Punto de color y nombre, pinchar abre la foto) */}
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            {getProductAllVariants(p).map((v, vIdx) => (
-                              <div
-                                key={vIdx}
-                                onClick={() => {
-                                  const allImgs = getProductAllImages(p);
-                                  const targetIdx = allImgs.findIndex((img) => img.color === v.color);
-                                  openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#1C0F18] border border-[#D9A6B8]/20 cursor-pointer active:scale-95"
-                                title={`Ver foto de ${v.color}`}
-                              >
-                                <span
-                                  className="w-3 h-3 rounded-full border border-white/50 shadow-sm flex-shrink-0"
-                                  style={{ backgroundColor: v.color_hex }}
-                                />
-                                <span className="text-[11px] text-gray-200 font-medium">{v.color}</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* Tallas del Producto */}
-                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                            {getProductAllSizes(p).map((t, idx) => (
+                            <div className="flex items-center gap-1.5">
+                              {p.etiqueta && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#311B2B] text-[#D9A6B8] border border-[#D9A6B8]/30 font-bold whitespace-nowrap">
+                                  {p.etiqueta}
+                                </span>
+                              )}
                               <span
-                                key={idx}
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                  p.activo
+                                    ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-rose-950/80 text-rose-400 border border-rose-500/30'
+                                }`}
                               >
-                                <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-                                {t}
+                                {p.activo ? 'Activo' : 'Oculto'}
                               </span>
-                            ))}
+                            </div>
                           </div>
 
-                          <div className="flex items-baseline gap-2 mt-1.5">
-                            <span className="text-sm font-bold text-white price-tag">
-                              {formatCLP(p.precio)}
+                          {/* Nombre y Precio */}
+                          <div className="flex items-baseline justify-between gap-2 mt-1">
+                            <h3 className="font-editorial text-base font-semibold text-white leading-tight">
+                              {p.nombre}
+                            </h3>
+                            <div className="flex items-baseline gap-1.5 flex-shrink-0">
+                              <span className="text-sm font-bold text-white price-tag">
+                                {formatCLP(p.precio)}
+                              </span>
+                              {p.precio_anterior && p.precio_anterior > p.precio && (
+                                <span className="text-[10px] text-gray-500 line-through price-tag">
+                                  {formatCLP(p.precio_anterior)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Botón Cortina Desplegable */}
+                          <button
+                            type="button"
+                            onClick={() => toggleProductExpand(p.id)}
+                            className="w-full mt-2.5 py-1.5 px-3 rounded-lg bg-[#1C0F18] hover:bg-[#311B2B] border border-[#D9A6B8]/20 text-[#D9A6B8] text-xs font-semibold flex items-center justify-between transition-colors shadow-inner"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <span>{isExpanded ? 'Ocultar detalles' : 'Ver foto, colores y tallas'}</span>
+                              <span className="text-[10px] text-gray-400 font-normal">
+                                ({getProductAllVariants(p).length} colores)
+                              </span>
                             </span>
-                            {p.precio_anterior && p.precio_anterior > p.precio && (
-                              <span className="text-[11px] text-gray-500 line-through price-tag">
-                                {formatCLP(p.precio_anterior)}
-                              </span>
+                            {isExpanded ? (
+                              <ChevronDown className="w-4 h-4 text-[#D9A6B8]" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-[#D9A6B8]" />
                             )}
-                          </div>
+                          </button>
+
+                          {/* Cortina Desplegable Móvil */}
+                          {isExpanded && (
+                            <div className="mt-3 p-3 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/20 space-y-3 animate-fadeIn">
+                              {/* Foto con visor */}
+                              <div className="flex items-center gap-3">
+                                <div
+                                  onClick={() => openProductLightbox(p, 0)}
+                                  className="relative group cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
+                                  title="Tocar para ver fotos a pantalla completa"
+                                >
+                                  <img
+                                    src={p.imagen_base64}
+                                    alt={p.nombre}
+                                    className="w-16 h-20 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/30 shadow-md"
+                                  />
+                                  <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs text-[#D9A6B8] text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-[#D9A6B8]/30 flex items-center gap-0.5">
+                                    <ZoomIn className="w-2.5 h-2.5" />
+                                    <span>{getProductAllImages(p).length}</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block">
+                                    Fotos del Producto
+                                  </span>
+                                  <p className="text-[11px] text-gray-300 mt-0.5">
+                                    Toca la foto para abrir el visor en alta definición con zoom y carrusel.
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Colores Asociados (punto y nombre) */}
+                              <div>
+                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block mb-1.5">
+                                  Colores ({getProductAllVariants(p).length}):
+                                </span>
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {getProductAllVariants(p).map((v, vIdx) => (
+                                    <div
+                                      key={vIdx}
+                                      onClick={() => {
+                                        const allImgs = getProductAllImages(p);
+                                        const targetIdx = allImgs.findIndex((img) => img.color === v.color);
+                                        openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#261521] border border-[#D9A6B8]/25 cursor-pointer active:scale-95"
+                                    >
+                                      <span
+                                        className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-sm flex-shrink-0"
+                                        style={{ backgroundColor: v.color_hex }}
+                                      />
+                                      <span className="text-xs text-gray-200 font-medium">{v.color}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Tallas Asociadas */}
+                              <div>
+                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block mb-1.5">
+                                  Tallas Disponibles:
+                                </span>
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {getProductAllSizes(p).map((t, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
+                                    >
+                                      <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
+                                      {t}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
 
-                      {/* Barra de Estado y Acciones Táctiles */}
-                      <div className="pt-2 border-t border-[#D9A6B8]/15 flex items-center justify-between gap-2">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide ${
-                            p.activo
-                              ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-rose-950/80 text-rose-400 border border-rose-500/30'
-                          }`}
-                        >
-                          {p.activo ? '● Activo' : '○ Deshabilitado'}
-                        </span>
-
-                        <div className="flex items-center gap-1.5">
+                        {/* Barra de Acciones */}
+                        <div className="pt-2 border-t border-[#D9A6B8]/15 flex items-center justify-end gap-2">
                           <button
                             onClick={() => openEditModal(p)}
                             className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-white text-xs font-semibold transition-colors"
@@ -1674,21 +1736,19 @@ export const AdminPanel: React.FC = () => {
                           </button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
-                {/* 2. Vista Desktop (Tabla Clásica Completa) */}
+                {/* 2. Vista Desktop (Tabla Clásica Compacta con Fila Cortina) */}
                 <div className="hidden md:block glass-card rounded-xl border border-[#D9A6B8]/20 overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs text-gray-300">
                       <thead className="bg-[#311B2B] text-[#D9A6B8] uppercase text-[10px] tracking-wider border-b border-[#D9A6B8]/20">
                         <tr>
-                          <th className="p-3">Foto</th>
+                          <th className="p-3 w-10 text-center"></th>
                           <th className="p-3">Nombre</th>
-                          <th className="p-3">Color</th>
                           <th className="p-3">Categoría</th>
-                          <th className="p-3">Tallas</th>
                           <th className="p-3">Precio</th>
                           <th className="p-3">Etiqueta</th>
                           <th className="p-3">Estado</th>
@@ -1696,124 +1756,212 @@ export const AdminPanel: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#D9A6B8]/10 bg-[#261521]/60">
-                        {paginatedProductos.map((p) => (
-                          <tr key={p.id} className="hover:bg-[#311B2B]/40 transition-colors">
-                            <td className="p-3">
-                              <div
-                                onClick={() => openProductLightbox(p, 0)}
-                                className="relative group cursor-pointer inline-block"
-                                title="Pinchar para ver todas las fotos a pantalla completa"
+                        {paginatedProductos.map((p) => {
+                          const isExpanded = expandedProducts.has(p.id);
+                          return (
+                            <React.Fragment key={p.id}>
+                              {/* Fila Principal Compacta */}
+                              <tr
+                                className={`transition-colors ${
+                                  isExpanded ? 'bg-[#311B2B]/40' : 'hover:bg-[#311B2B]/25'
+                                }`}
                               >
-                                <img
-                                  src={p.imagen_base64}
-                                  alt={p.nombre}
-                                  className="w-12 h-14 object-cover rounded bg-[#1C0F18] border border-[#D9A6B8]/20 group-hover:border-[#D9A6B8] transition-all group-hover:scale-105 shadow-md"
-                                />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center text-white">
-                                  <ZoomIn className="w-4 h-4 text-[#D9A6B8]" />
-                                </div>
-                                {getProductAllImages(p).length > 1 && (
-                                  <span className="absolute -bottom-1 -right-1 bg-[#261521] border border-[#D9A6B8]/50 text-[#D9A6B8] text-[9px] font-bold px-1 rounded-full shadow-sm flex items-center gap-0.5">
-                                    +{getProductAllImages(p).length}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            {/* Columna Nombre: Solo el nombre del producto */}
-                            <td className="p-3">
-                              <div className="font-semibold text-white text-sm">{p.nombre}</div>
-                            </td>
-                            {/* Columna Color: Solo el color que tiene asociado (el punto y nombre) */}
-                            <td className="p-3">
-                              <div className="flex flex-col gap-1.5">
-                                {getProductAllVariants(p).map((v, vIdx) => (
+                                {/* 1. Icono Desplegable Tipo Cortina */}
+                                <td className="p-3 text-center w-10">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleProductExpand(p.id)}
+                                    className="p-1.5 rounded-lg bg-[#1C0F18] hover:bg-[#D9A6B8] text-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/30 transition-all active:scale-95 shadow-sm"
+                                    title={isExpanded ? 'Ocultar cortina' : 'Desplegar foto, color y tallas'}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </td>
+
+                                {/* 2. Nombre */}
+                                <td className="p-3 font-semibold text-white text-sm">
                                   <div
-                                    key={vIdx}
-                                    onClick={() => {
-                                      const allImgs = getProductAllImages(p);
-                                      const targetIdx = allImgs.findIndex((img) => img.color === v.color);
-                                      openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
-                                    }}
-                                    className="inline-flex items-center gap-2 cursor-pointer group/col"
-                                    title={`Pinchar para ver foto de color ${v.color}`}
+                                    onClick={() => toggleProductExpand(p.id)}
+                                    className="cursor-pointer hover:text-[#D9A6B8] transition-colors"
+                                    title="Pinchar para desplegar foto, color y tallas"
                                   >
-                                    <span
-                                      className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-inner flex-shrink-0 group-hover/col:scale-110 transition-transform"
-                                      style={{ backgroundColor: v.color_hex }}
-                                    />
-                                    <span className="text-xs text-gray-200 font-medium group-hover/col:text-[#D9A6B8] transition-colors whitespace-nowrap">
-                                      {v.color}
-                                    </span>
+                                    {p.nombre}
                                   </div>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="p-3 font-medium text-[#D9A6B8]">
-                              {p.categoria_nombre || '-'}
-                            </td>
-                            <td className="p-3">
-                              <div className="flex flex-wrap items-center gap-1">
-                                {getProductAllSizes(p).map((t, idx) => (
+                                </td>
+
+                                {/* 3. Categoría */}
+                                <td className="p-3 font-medium text-[#D9A6B8]">
+                                  {p.categoria_nombre || '-'}
+                                </td>
+
+                                {/* 4. Precio */}
+                                <td className="p-3 font-bold text-white price-tag">
+                                  {formatCLP(p.precio)}
+                                  {p.precio_anterior && (
+                                    <div className="text-[10px] text-gray-400 line-through">
+                                      {formatCLP(p.precio_anterior)}
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* 5. Etiqueta */}
+                                <td className="p-3">
+                                  {p.etiqueta ? (
+                                    <span className="px-2 py-0.5 rounded-full bg-[#311B2B] text-[#D9A6B8] text-[10px] font-bold border border-[#D9A6B8]/30 whitespace-nowrap">
+                                      {p.etiqueta}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-500">-</span>
+                                  )}
+                                </td>
+
+                                {/* 6. Estado */}
+                                <td className="p-3">
                                   <span
-                                    key={idx}
-                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
+                                      p.activo
+                                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
+                                        : 'bg-rose-950 text-rose-400 border border-rose-500/30'
+                                    }`}
                                   >
-                                    <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-                                    {t}
+                                    {p.activo ? 'Activo' : 'Deshabilitado'}
                                   </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="p-3 font-bold text-white price-tag">
-                              {formatCLP(p.precio)}
-                              {p.precio_anterior && (
-                                <div className="text-[10px] text-gray-400 line-through">
-                                  {formatCLP(p.precio_anterior)}
-                                </div>
+                                </td>
+
+                                {/* 7. Acciones */}
+                                <td className="p-3 text-right space-x-2 whitespace-nowrap">
+                                  <button
+                                    onClick={() => openEditModal(p)}
+                                    className="p-1.5 rounded hover:bg-[#311B2B] text-gray-300 hover:text-white"
+                                    title="Editar producto"
+                                  >
+                                    <Edit2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleToggleEstadoProducto(p.id, p.activo)}
+                                    className={`p-1.5 rounded transition-colors ${
+                                      p.activo
+                                        ? 'text-emerald-400 hover:bg-rose-950 hover:text-rose-400'
+                                        : 'text-gray-400 hover:bg-emerald-950 hover:text-emerald-400'
+                                    }`}
+                                    title={p.activo ? 'Deshabilitar producto (Soft Delete)' : 'Activar producto'}
+                                  >
+                                    {p.activo ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                  </button>
+                                </td>
+                              </tr>
+
+                              {/* Fila Cortina Desplegada con Foto, Color y Tallas */}
+                              {isExpanded && (
+                                <tr className="bg-[#1C0F18]/90 border-b border-[#D9A6B8]/25 transition-all">
+                                  <td colSpan={7} className="p-4 sm:p-5">
+                                    <div className="flex flex-col md:flex-row items-start gap-6 bg-[#261521]/95 p-4 rounded-xl border border-[#D9A6B8]/25 shadow-xl">
+                                      {/* FOTO: Miniaturas con visor Lightbox */}
+                                      <div className="flex flex-col items-center gap-2 flex-shrink-0">
+                                        <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider">
+                                          Fotos ({getProductAllImages(p).length})
+                                        </span>
+                                        <div
+                                          onClick={() => openProductLightbox(p, 0)}
+                                          className="relative group cursor-pointer inline-block"
+                                          title="Pinchar para ver a pantalla completa (Lightbox HD)"
+                                        >
+                                          <img
+                                            src={p.imagen_base64}
+                                            alt={p.nombre}
+                                            className="w-20 h-24 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/30 group-hover:border-[#D9A6B8] transition-all group-hover:scale-105 shadow-md"
+                                          />
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-white">
+                                            <ZoomIn className="w-5 h-5 text-[#D9A6B8]" />
+                                          </div>
+                                          <span className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs text-[#D9A6B8] text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-[#D9A6B8]/30 flex items-center gap-0.5">
+                                            <ZoomIn className="w-2.5 h-2.5" />
+                                            <span>Ver HD</span>
+                                          </span>
+                                        </div>
+
+                                        {/* Miniaturas de variantes si tiene más de 1 imagen */}
+                                        {getProductAllImages(p).length > 1 && (
+                                          <div className="flex items-center gap-1.5 mt-1">
+                                            {getProductAllImages(p).slice(0, 5).map((img, idx) => (
+                                              <button
+                                                key={idx}
+                                                onClick={() => openProductLightbox(p, idx, img.color)}
+                                                className="w-7 h-9 rounded overflow-hidden border border-white/20 hover:border-[#D9A6B8] transition-all hover:scale-105"
+                                                title={`Foto ${idx + 1} (${img.color})`}
+                                              >
+                                                <img src={img.url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                                              </button>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* COLOR: Puntos de color y nombre */}
+                                      <div className="flex-1 min-w-[220px] space-y-2 md:border-l border-[#D9A6B8]/15 md:pl-5">
+                                        <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block">
+                                          Colores Asociados ({getProductAllVariants(p).length})
+                                        </span>
+                                        <div className="flex flex-wrap gap-2">
+                                          {getProductAllVariants(p).map((v, vIdx) => (
+                                            <div
+                                              key={vIdx}
+                                              onClick={() => {
+                                                const allImgs = getProductAllImages(p);
+                                                const targetIdx = allImgs.findIndex((img) => img.color === v.color);
+                                                openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
+                                              }}
+                                              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/20 hover:border-[#D9A6B8]/60 cursor-pointer group/col transition-all"
+                                              title={`Pinchar para ver foto de color ${v.color}`}
+                                            >
+                                              <span
+                                                className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-inner flex-shrink-0 group-hover/col:scale-110 transition-transform"
+                                                style={{ backgroundColor: v.color_hex }}
+                                              />
+                                              <span className="text-xs text-gray-200 font-semibold group-hover/col:text-[#D9A6B8] transition-colors whitespace-nowrap">
+                                                {v.color}
+                                              </span>
+                                              <span className="text-[10px] text-gray-400 font-mono">
+                                                ({v.tallas.join(', ')})
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* TALLAS: Badges de tallas */}
+                                      <div className="flex-1 min-w-[180px] space-y-2 md:border-l border-[#D9A6B8]/15 md:pl-5">
+                                        <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider block">
+                                          Tallas del Producto
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {getProductAllSizes(p).map((t, idx) => (
+                                            <span
+                                              key={idx}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-gray-200"
+                                            >
+                                              <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
+                                              {t}
+                                            </span>
+                                          ))}
+                                        </div>
+                                        {p.descripcion && (
+                                          <p className="text-[11px] text-gray-400 mt-2 line-clamp-2 leading-relaxed italic">
+                                            "{p.descripcion}"
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
                               )}
-                            </td>
-                            <td className="p-3">
-                              {p.etiqueta ? (
-                                <span className="px-2 py-0.5 rounded-full bg-[#311B2B] text-[#D9A6B8] text-[10px] font-bold border border-[#D9A6B8]/30">
-                                  {p.etiqueta}
-                                </span>
-                              ) : (
-                                <span className="text-gray-500">-</span>
-                              )}
-                            </td>
-                            <td className="p-3">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  p.activo
-                                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
-                                    : 'bg-rose-950 text-rose-400 border border-rose-500/30'
-                                }`}
-                              >
-                                {p.activo ? 'Activo' : 'Deshabilitado'}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right space-x-2">
-                              <button
-                                onClick={() => openEditModal(p)}
-                                className="p-1.5 rounded hover:bg-[#311B2B] text-gray-300 hover:text-white"
-                                title="Editar producto"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => handleToggleEstadoProducto(p.id, p.activo)}
-                                className={`p-1.5 rounded transition-colors ${
-                                  p.activo
-                                    ? 'text-emerald-400 hover:bg-rose-950 hover:text-rose-400'
-                                    : 'text-gray-400 hover:bg-emerald-950 hover:text-emerald-400'
-                                }`}
-                                title={p.activo ? 'Deshabilitar producto (Soft Delete)' : 'Activar producto'}
-                              >
-                                {p.activo ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                            </React.Fragment>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
