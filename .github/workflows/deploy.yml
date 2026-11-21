@@ -15,12 +15,36 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Procesar y codificar credenciales seguras
+        env:
+          SECRET_PASS: ${{ secrets.AWS_PASSWORD_BD }}
+        run: |
+          python3 -c "
+          import os, base64
+          raw_pass = os.environ.get('SECRET_PASS', '')
+          strip_pass = raw_pass.strip()
+          b64_raw = base64.b64encode(raw_pass.encode('utf-8')).decode('ascii')
+          b64_strip = base64.b64encode(strip_pass.encode('utf-8')).decode('ascii')
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f'PASS_B64_RAW={b64_raw}\n')
+              f.write(f'PASS_B64_STRIP={b64_strip}\n')
+              f.write(f'PASS_RAW_LEN={len(raw_pass)}\n')
+              f.write(f'PASS_STRIP_LEN={len(strip_pass)}\n')
+          "
+
       - name: Ejecutar despliegue vía SSH en AWS Ubuntu
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          PASS_B64_RAW: ${{ env.PASS_B64_RAW }}
+          PASS_B64_STRIP: ${{ env.PASS_B64_STRIP }}
+          BD_HOST_VAR: ${{ vars.AWS_HOST_BD }}
+          BD_USER_VAR: ${{ vars.AWS_USER_BD }}
+          BD_SCHEMA_VAR: ${{ vars.AWS_SCHEME_BD }}
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USERNAME }}
           key: ${{ secrets.AWS_PRIVATE_KEY }}
+          envs: PASS_B64_RAW,PASS_B64_STRIP,BD_HOST_VAR,BD_USER_VAR,BD_SCHEMA_VAR
           script: |
             set +e
             REPORT_FILE="/tmp/status_studiobj.txt"
@@ -44,46 +68,18 @@ jobs:
             git reset --hard origin/main >> "$REPORT_FILE" 2>&1 || true
             git clean -fd deploy/ >> "$REPORT_FILE" 2>&1 || true
 
-            echo "--- INYECTANDO CREDENCIALES AWS RDS DESDE ENVIRONMENT PRODUCTION ---" >> "$REPORT_FILE" 2>&1
-            BD_HOST="${{ vars.AWS_HOST_BD }}"
-            BD_USER="${{ vars.AWS_USER_BD }}"
-            BD_PASS="${{ secrets.AWS_PASSWORD_BD }}"
-            BD_SCHEMA="${{ vars.AWS_SCHEME_BD }}"
-
-            if [ -z "$BD_HOST" ]; then
-              BD_HOST="ls-b12cc9081f17b594187264e8c7fe42119a9bb93f.cgt2s428cp85.us-east-1.rds.amazonaws.com"
-            fi
-            if [ -z "$BD_USER" ]; then
-              BD_USER="dbmasteruser"
-            fi
-            if [ -z "$BD_SCHEMA" ]; then
-              BD_SCHEMA="bdstudiobj"
+            echo "--- CONFIGURANDO ENTORNO PYTHON Y CREDENCIALES AWS RDS ---" >> "$REPORT_FILE" 2>&1
+            BACKEND_DIR="/var/www/studiobj.cl/backend"
+            VENV_DIR="$BACKEND_DIR/venv"
+            if [ ! -x "$VENV_DIR/bin/python3" ]; then
+              python3 -m venv "$VENV_DIR" >> "$REPORT_FILE" 2>&1 || true
             fi
 
-            echo "Variables AWS detectadas: HOST=$BD_HOST | USER=$BD_USER | SCHEMA=$BD_SCHEMA | PASS_LEN=$(echo -n "$BD_PASS" | wc -c)" >> "$REPORT_FILE" 2>&1
+            echo "Ejecutando configurador seguro configure_env.py..." >> "$REPORT_FILE" 2>&1
+            "$VENV_DIR/bin/python3" "$BACKEND_DIR/configure_env.py" >> "$REPORT_FILE" 2>&1 || true
 
-            ENV_TARGET="/var/www/studiobj.cl/backend/.env"
-            echo "# PostgreSQL AWS RDS - StudioBJ (Producción)" | sudo tee "$ENV_TARGET" > /dev/null
-            echo "DB_HOST=$BD_HOST" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "DB_PORT=5432" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "DB_NAME=postgres" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "DB_USER=$BD_USER" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "DB_PASSWORD=$BD_PASS" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "DB_SCHEMA=$BD_SCHEMA" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "DATABASE_URL=postgresql+psycopg://${BD_USER}:${BD_PASS}@${BD_HOST}:5432/postgres?sslmode=require" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "JWT_SECRET_KEY=9a8f3b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "JWT_ALGORITHM=HS256" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=480" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "ADMIN_EMAIL=roderick.espinoza@gmail.com" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "ADMIN_PASSWORD=12345678" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "ADMIN_NOMBRE=Roderick Espinoza" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "PGRST_DB_URI=postgresql://${BD_USER}:${BD_PASS}@${BD_HOST}:5432/postgres?sslmode=require" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "PGRST_DB_SCHEMAS=$BD_SCHEMA" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "PGRST_DB_ANON_ROLE=web_anon" | sudo tee -a "$ENV_TARGET" > /dev/null
-            echo "PGRST_SERVER_PORT=3001" | sudo tee -a "$ENV_TARGET" > /dev/null
-
-            sudo chmod 644 "$ENV_TARGET" 2>/dev/null || true
-            sudo chown www-data:www-data "$ENV_TARGET" 2>/dev/null || true
+            sudo chmod 644 "$BACKEND_DIR/.env" 2>/dev/null || true
+            sudo chown www-data:www-data "$BACKEND_DIR/.env" 2>/dev/null || true
 
             echo "--- EJECUTANDO SCRIPT DE DESPLIEGUE ---" >> "$REPORT_FILE" 2>&1
             chmod +x /var/www/studiobj.cl/deploy/deploy.sh 2>/dev/null || true

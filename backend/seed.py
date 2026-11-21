@@ -47,9 +47,9 @@ def run_seed():
     ddl_path = os.path.join(base_dir, "database", "01_schema_ddl.sql")
     policies_path = os.path.join(base_dir, "database", "02_roles_and_policies.sql")
 
-    is_postgres = settings.DATABASE_URL.startswith("postgresql")
+    is_postgres = "postgresql" in str(engine.url) and "sqlite" not in str(engine.url)
 
-    if is_postgres and "sqlite" not in str(engine.url):
+    if is_postgres:
         print("Ejecutando DDL en PostgreSQL...")
         try:
             with engine.connect() as conn:
