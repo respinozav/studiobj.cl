@@ -8,7 +8,7 @@ from PIL import Image
 from sqlalchemy import text
 from app.config import settings
 from app.database import engine, SessionLocal, Base
-from app.models import Rol, Usuario, Categoria, Producto, HeroTemplate
+from app.models import Rol, Usuario, Categoria, Producto, HeroTemplate, Color
 from app.security import hash_password
 
 products_images_local = {
@@ -148,6 +148,41 @@ def run_seed():
                 print(f"✓ Categoría creada: {cat_nombre}")
             categorias_map[cat_nombre] = cat
 
+        # 3.5. COLORES ESTÁNDAR DE LA MARCA (PALETA DARK LUXURY)
+        colores_seed_data = [
+            ("Negro Onix", "#18181b", "Negro azabache mate de compresión"),
+            ("Rosa Palo", "#D9A6B8", "Tono suave distintivo de la marca"),
+            ("Ciruela Profundo", "#581c43", "Tono oscuro sofisticado"),
+            ("Mora Dark", "#311B2B", "Fondo emblemático StudioBJ"),
+            ("Vino Tinto", "#722F37", "Burgundy oscuro de compresión seamless"),
+            ("Púrpura Amatista", "#4A2040", "Púrpura ahumado para conjuntos acanalados"),
+            ("Azul Noche", "#1e293b", "Navy de alta densidad"),
+            ("Verde Esmeralda", "#1e3a2f", "Verde bosque deportivo"),
+            ("Blanco Marfil", "#f8fafc", "Blanco puro sedoso sin transparencias"),
+            ("Gris Carbón", "#374151", "Gris mineral neutro"),
+            ("Oro Rosa", "#B76E79", "Detalles y herrajes metálicos"),
+        ]
+        colores_map = {}
+        for c_nom, c_hex, c_desc in colores_seed_data:
+            col_obj = db.query(Color).filter(Color.nombre == c_nom).first()
+            if not col_obj:
+                col_obj = Color(
+                    nombre=c_nom,
+                    hex=c_hex,
+                    descripcion=c_desc,
+                    activo=True
+                )
+                db.add(col_obj)
+                db.commit()
+                db.refresh(col_obj)
+                print(f"✓ Color creado: {c_nom} ({c_hex})")
+            else:
+                col_obj.hex = c_hex
+                col_obj.descripcion = c_desc
+                col_obj.activo = True
+                db.commit()
+            colores_map[c_nom] = col_obj
+
         # 4. PRODUCTOS CRO DE ALTA CONVERSIÓN CON FOTOGRAFÍAS REALISTAS
         productos_seed = [
             {
@@ -217,6 +252,15 @@ def run_seed():
             cat = categorias_map.get(p["categoria"])
             if not cat:
                 continue
+            color_hex_val = colores_map.get(p["color"]).hex if p["color"] in colores_map else None
+            if not color_hex_val:
+                for k, v in colores_map.items():
+                    if k.lower() in p["color"].lower():
+                        color_hex_val = v.hex
+                        break
+            if not color_hex_val:
+                color_hex_val = "#18181b"
+
             prod_existente = db.query(Producto).filter(Producto.nombre == p["nombre"]).first()
             if not prod_existente:
                 b64_img = get_product_photo_webp(p["nombre"])
@@ -224,7 +268,7 @@ def run_seed():
                 vars_list = [
                     {
                         "color": p["color"],
-                        "color_hex": None,
+                        "color_hex": color_hex_val,
                         "imagenes": [b64_img] if b64_img else [],
                         "tallas": p["talla"]
                     }
@@ -244,6 +288,20 @@ def run_seed():
                 )
                 db.add(nuevo_prod)
                 print(f"✓ Producto creado: {p['nombre']} (${p['precio']} CLP)")
+            else:
+                # Sincronizar variantes y color_hex si estaban vacías
+                try:
+                    cur_vars = json.loads(prod_existente.variantes) if prod_existente.variantes else []
+                    updated = False
+                    for v in cur_vars:
+                        if not v.get("color_hex"):
+                            v["color_hex"] = color_hex_val
+                            updated = True
+                    if updated:
+                        prod_existente.variantes = json.dumps(cur_vars)
+                        db.commit()
+                except Exception:
+                    pass
 
         # 4. PLANTILLA HERO PRINCIPAL
         hero = db.query(HeroTemplate).first()
