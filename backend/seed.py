@@ -20,6 +20,25 @@ products_images_local = {
     'Set Ribbed Touch Amethyst': 'set_ribbed_amethyst.webp'
 }
 
+variant_images_local = {
+    ('Conjunto Sculpt Seamless Eclipse', 'Vino Tinto'): 'conjunto_sculpt_eclipse.webp',
+    ('Conjunto Sculpt Seamless Eclipse', 'Negro Onix'): 'conjunto_sculpt_eclipse_negro.webp',
+    ('Conjunto Sculpt Seamless Eclipse', 'Rosa Palo'): 'conjunto_sculpt_eclipse_rosapalo.webp',
+    ('Leggings High-Rise Contour Velvet', 'Negro Onix'): 'leggings_contour_black.webp',
+    ('Leggings High-Rise Contour Velvet', 'Ciruela Profundo'): 'leggings_contour_ciruela.webp',
+    ('Leggings High-Rise Contour Velvet', 'Vino Tinto'): 'leggings_contour_vinotinto.webp',
+    ('Top Deportivo Cross-Back Obsidian', 'Rosa Palo'): 'top_crossback_pink.webp',
+    ('Top Deportivo Cross-Back Obsidian', 'Negro Azabache'): 'top_crossback_negro.webp',
+    ('Top Deportivo Cross-Back Obsidian', 'Púrpura Amatista'): 'top_crossback_amatista.webp',
+    ('Enterito Body Sculpt Luxe', 'Mora Dark'): 'enterito_sculpt_luxe.webp',
+    ('Enterito Body Sculpt Luxe', 'Negro Onix'): 'enterito_sculpt_negro.webp',
+    ('Enterito Body Sculpt Luxe', 'Vino Tinto'): 'enterito_sculpt_vinotinto.webp',
+    ('Bolso Deportivo StudioBJ Duffle', 'Negro Mate & Oro Rosa'): 'bolso_deportivo_duffle.webp',
+    ('Bolso Deportivo StudioBJ Duffle', 'Negro Onix'): 'bolso_deportivo_negro.webp',
+    ('Set Ribbed Touch Amethyst', 'Púrpura Amatista'): 'set_ribbed_amethyst.webp',
+    ('Set Ribbed Touch Amethyst', 'Negro Onix'): 'set_ribbed_negro.webp',
+}
+
 def get_product_photo_webp(nombre: str) -> str:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     filename = products_images_local.get(nombre)
@@ -36,6 +55,17 @@ def get_product_photo_webp(nombre: str) -> str:
         "92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92Nv92NuAAP7qA"
         "AAAAAAAAAAAAAAAAAAAAAAAA"
     )
+
+def get_variant_photo_webp(prod_nombre: str, color_nombre: str) -> str:
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    filename = variant_images_local.get((prod_nombre, color_nombre))
+    if filename:
+        local_path = os.path.join(base_dir, 'frontend', 'public', 'products', filename)
+        if os.path.exists(local_path):
+            with open(local_path, 'rb') as f:
+                b64 = base64.b64encode(f.read()).decode('ascii')
+                return f"data:image/webp;base64,{b64}"
+    return get_product_photo_webp(prod_nombre)
 
 def run_seed():
     print("==================================================")
@@ -285,10 +315,11 @@ def run_seed():
             # Construir variantes completas
             vars_list = []
             for v_def in p.get("variantes_def", []):
+                v_img = get_variant_photo_webp(p["nombre"], v_def["color"])
                 vars_list.append({
                     "color": v_def["color"],
                     "color_hex": v_def.get("color_hex") or (colores_map.get(v_def["color"]).hex if v_def["color"] in colores_map else "#18181b"),
-                    "imagenes": [b64_img] if b64_img else [],
+                    "imagenes": [v_img] if v_img else ([b64_img] if b64_img else []),
                     "tallas": v_def["tallas"]
                 })
             
