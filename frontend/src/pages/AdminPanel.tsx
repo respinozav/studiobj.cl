@@ -41,6 +41,44 @@ const SYSTEM_MODULES = [
 ];
 import { STANDARD_SIZES, LUXURY_PALETTE, getColorHex } from '../utils/colorsAndSizes';
 
+export interface ProductVariantItem {
+  color: string;
+  color_hex: string;
+  tallas: string[];
+  fotosCount: number;
+}
+
+export const getProductAllVariants = (p: Producto): ProductVariantItem[] => {
+  if (p.variantes && Array.isArray(p.variantes) && p.variantes.length > 0) {
+    return p.variantes.map((v) => ({
+      color: v.color || p.color || 'Único',
+      color_hex: v.color_hex || getColorHex(v.color || p.color),
+      tallas: v.tallas
+        ? v.tallas.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean)
+        : (p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA']),
+      fotosCount: (v.imagenes || []).length,
+    }));
+  }
+  const colorParts = p.color ? p.color.split(/[/,]/).map((s) => s.trim()).filter(Boolean) : ['Único'];
+  const tallasArr = p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA'];
+  return colorParts.map((c) => ({
+    color: c,
+    color_hex: getColorHex(c),
+    tallas: tallasArr,
+    fotosCount: p.imagen_base64 ? 1 : 0,
+  }));
+};
+
+export const getProductAllSizes = (p: Producto): string[] => {
+  const vars = getProductAllVariants(p);
+  const sizeSet = new Set<string>();
+  vars.forEach((v) => v.tallas.forEach((t) => sizeSet.add(t)));
+  if (sizeSet.size === 0 && p.talla) {
+    p.talla.split(',').forEach((t) => sizeSet.add(t.trim().toUpperCase()));
+  }
+  return Array.from(sizeSet);
+};
+
 export const AdminPanel: React.FC = () => {
   const { user, token, logout, isSuperAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -1382,7 +1420,7 @@ export const AdminPanel: React.FC = () => {
           </div>
         </header>
 
-        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-8 py-5">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-8 py-5 pb-24 lg:pb-8">
         {/* Banner de Mensajes */}
         {message && (
           <div
@@ -1492,27 +1530,35 @@ export const AdminPanel: React.FC = () => {
                             )}
                           </div>
 
-                          <h3 className="font-editorial text-base font-semibold text-white leading-tight truncate">
+                          <h3 className="font-editorial text-base font-semibold text-white leading-tight">
                             {p.nombre}
                           </h3>
 
-                          <div className="flex items-center gap-1.5 text-[11px] text-gray-300 mt-0.5">
-                            <span
-                              className="w-3 h-3 rounded-full border border-white/40 shadow-inner flex-shrink-0"
-                              style={{ backgroundColor: getColorHex(p.color) }}
-                            />
-                            <span className="truncate">{p.color}</span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                            {p.talla.split(',').map((t, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
+                          {/* Colores y Tallas por cada variante */}
+                          <div className="mt-2 space-y-1.5">
+                            {getProductAllVariants(p).map((v, vIdx) => (
+                              <div
+                                key={vIdx}
+                                className="p-1.5 rounded-lg bg-[#1C0F18]/90 border border-[#D9A6B8]/20 flex flex-col gap-1"
                               >
-                                <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-                                {t.trim()}
-                              </span>
+                                <div className="flex items-center gap-1.5 text-xs">
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-sm flex-shrink-0"
+                                    style={{ backgroundColor: v.color_hex }}
+                                  />
+                                  <span className="font-semibold text-gray-100">{v.color}</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 pl-5">
+                                  {v.tallas.map((t, tIdx) => (
+                                    <span
+                                      key={tIdx}
+                                      className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[9px] font-bold text-[#D9A6B8]"
+                                    >
+                                      {t}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
                             ))}
                           </div>
 
@@ -1595,13 +1641,24 @@ export const AdminPanel: React.FC = () => {
                               />
                             </td>
                             <td className="p-3">
-                              <div className="font-semibold text-white">{p.nombre}</div>
-                              <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
-                                <span
-                                  className="w-2.5 h-2.5 rounded-full border border-white/40 shadow-inner flex-shrink-0"
-                                  style={{ backgroundColor: getColorHex(p.color) }}
-                                />
-                                <span>{p.color}</span>
+                              <div className="font-semibold text-white text-sm">{p.nombre}</div>
+                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                {getProductAllVariants(p).map((v, vIdx) => (
+                                  <div
+                                    key={vIdx}
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#1C0F18]/90 border border-[#D9A6B8]/25 text-[11px]"
+                                  >
+                                    <span
+                                      className="w-2.5 h-2.5 rounded-full border border-white/40 shadow-inner flex-shrink-0"
+                                      style={{ backgroundColor: v.color_hex }}
+                                      title={v.color}
+                                    />
+                                    <span className="font-medium text-gray-200">{v.color}</span>
+                                    <span className="text-[#D9A6B8] font-mono text-[10px]">
+                                      ({v.tallas.join(', ')})
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
                             </td>
                             <td className="p-3 font-medium text-[#D9A6B8]">
@@ -1609,13 +1666,13 @@ export const AdminPanel: React.FC = () => {
                             </td>
                             <td className="p-3">
                               <div className="flex flex-wrap items-center gap-1">
-                                {p.talla.split(',').map((t, idx) => (
+                                {getProductAllSizes(p).map((t, idx) => (
                                   <span
                                     key={idx}
-                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#1C0F18] border border-[#D9A6B8]/20 text-[10px] font-bold text-gray-200"
+                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
                                   >
                                     <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
-                                    {t.trim()}
+                                    {t}
                                   </span>
                                 ))}
                               </div>
@@ -2593,6 +2650,69 @@ export const AdminPanel: React.FC = () => {
         )}
       </main>
       </div>
+
+      {/* Mobile Sticky Bottom Navigation (Mobile-First UX) */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#261521]/95 backdrop-blur-md border-t border-[#D9A6B8]/20 px-2 py-2 flex items-center justify-around shadow-2xl safe-area-pb">
+        {allowedModules.includes('productos') && (
+          <button
+            onClick={() => setActiveTab('productos')}
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+              activeTab === 'productos'
+                ? 'text-[#D9A6B8] bg-[#311B2B] font-bold scale-105'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            <span className="text-[10px] tracking-tight">Productos</span>
+          </button>
+        )}
+        {allowedModules.includes('categorias') && (
+          <button
+            onClick={() => setActiveTab('categorias')}
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+              activeTab === 'categorias'
+                ? 'text-[#D9A6B8] bg-[#311B2B] font-bold scale-105'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Layers className="w-5 h-5" />
+            <span className="text-[10px] tracking-tight">Categorías</span>
+          </button>
+        )}
+        {allowedModules.includes('colores') && (
+          <button
+            onClick={() => setActiveTab('colores')}
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+              activeTab === 'colores'
+                ? 'text-[#D9A6B8] bg-[#311B2B] font-bold scale-105'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Palette className="w-5 h-5" />
+            <span className="text-[10px] tracking-tight">Colores</span>
+          </button>
+        )}
+        {(isSuperAdmin || allowedModules.includes('hero') || allowedModules.includes('productos')) && (
+          <button
+            onClick={() => setActiveTab('hero')}
+            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl transition-all ${
+              activeTab === 'hero'
+                ? 'text-[#D9A6B8] bg-[#311B2B] font-bold scale-105'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            <Sparkles className="w-5 h-5" />
+            <span className="text-[10px] tracking-tight">Portada</span>
+          </button>
+        )}
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="flex flex-col items-center gap-1 py-1 px-2.5 rounded-xl text-gray-400 hover:text-gray-200 transition-all"
+        >
+          <Menu className="w-5 h-5" />
+          <span className="text-[10px] tracking-tight">Más</span>
+        </button>
+      </nav>
 
       {/* --- MODAL FORMULARIO SEGÚN TAB --- */}
       {isModalOpen && (

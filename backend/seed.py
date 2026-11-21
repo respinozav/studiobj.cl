@@ -183,7 +183,7 @@ def run_seed():
                 db.commit()
             colores_map[c_nom] = col_obj
 
-        # 4. PRODUCTOS CRO DE ALTA CONVERSIÓN CON FOTOGRAFÍAS REALISTAS
+        # 4. PRODUCTOS CRO DE ALTA CONVERSIÓN CON FOTOGRAFÍAS REALISTAS Y MÚLTIPLES VARIANTES DE COLOR
         productos_seed = [
             {
                 "categoria": "Conjuntos",
@@ -193,7 +193,12 @@ def run_seed():
                 "precio": 38990,
                 "precio_anterior": 46990,
                 "etiqueta": "Top Ventas",
-                "descripcion": "Tejido seamless de compresión media que abraza la silueta sin transparencias. Top con copas removibles y calza de tiro ultra alto."
+                "descripcion": "Tejido seamless de compresión media que abraza la silueta sin transparencias. Top con copas removibles y calza de tiro ultra alto.",
+                "variantes_def": [
+                    {"color": "Vino Tinto", "color_hex": "#722F37", "tallas": "XS,S,M,L,XL"},
+                    {"color": "Negro Onix", "color_hex": "#18181b", "tallas": "S,M,L,XL"},
+                    {"color": "Rosa Palo", "color_hex": "#D9A6B8", "tallas": "XS,S,M"}
+                ]
             },
             {
                 "categoria": "Leggings",
@@ -203,7 +208,12 @@ def run_seed():
                 "precio": 26990,
                 "precio_anterior": 32990,
                 "etiqueta": "Últimas unidades",
-                "descripcion": "Calza moldeadora anti-rozaduras con efecto push-up sutil y pretina reforzada que no se dobla durante entrenamientos intensos."
+                "descripcion": "Calza moldeadora anti-rozaduras con efecto push-up sutil y pretina reforzada que no se dobla durante entrenamientos intensos.",
+                "variantes_def": [
+                    {"color": "Negro Onix", "color_hex": "#18181b", "tallas": "XS,S,M,L"},
+                    {"color": "Ciruela Profundo", "color_hex": "#581c43", "tallas": "S,M,L"},
+                    {"color": "Vino Tinto", "color_hex": "#722F37", "tallas": "XS,S,M,L"}
+                ]
             },
             {
                 "categoria": "Tops",
@@ -213,7 +223,12 @@ def run_seed():
                 "precio": 19990,
                 "precio_anterior": 24990,
                 "etiqueta": "Nuevo",
-                "descripcion": "Diseño en espalda cruzada que maximiza libertad de movimiento y soporte. Banda elástica suave al tacto y acabado sedoso."
+                "descripcion": "Diseño en espalda cruzada que maximiza libertad de movimiento y soporte. Banda elástica suave al tacto y acabado sedoso.",
+                "variantes_def": [
+                    {"color": "Negro Azabache", "color_hex": "#18181b", "tallas": "S,M,L"},
+                    {"color": "Rosa Palo", "color_hex": "#D9A6B8", "tallas": "XS,S,M,L"},
+                    {"color": "Púrpura Amatista", "color_hex": "#4A2040", "tallas": "S,M"}
+                ]
             },
             {
                 "categoria": "Enteritos",
@@ -223,7 +238,12 @@ def run_seed():
                 "precio": 42990,
                 "precio_anterior": 49990,
                 "etiqueta": "Top Ventas",
-                "descripcion": "Mono enterizo estilizador de una sola pieza con tejido de rápida absorción y costuras planas flatlock antiroce."
+                "descripcion": "Mono enterizo estilizador de una sola pieza con tejido de rápida absorción y costuras planas flatlock antiroce.",
+                "variantes_def": [
+                    {"color": "Negro Onix", "color_hex": "#18181b", "tallas": "XS,S,M,L"},
+                    {"color": "Mora Dark", "color_hex": "#311B2B", "tallas": "XS,S,M,L"},
+                    {"color": "Vino Tinto", "color_hex": "#722F37", "tallas": "S,M,L"}
+                ]
             },
             {
                 "categoria": "Accesorios",
@@ -233,7 +253,11 @@ def run_seed():
                 "precio": 24990,
                 "precio_anterior": None,
                 "etiqueta": "Nuevo",
-                "descripcion": "Compartimento impermeable para zapatillas, detalles en herrajes dorados y correa ergonómica acolchada."
+                "descripcion": "Compartimento impermeable para zapatillas, detalles en herrajes dorados y correa ergonómica acolchada.",
+                "variantes_def": [
+                    {"color": "Negro Mate & Oro Rosa", "color_hex": "#2B2B2B", "tallas": "Única"},
+                    {"color": "Negro Onix", "color_hex": "#18181b", "tallas": "Única"}
+                ]
             },
             {
                 "categoria": "Conjuntos",
@@ -243,7 +267,11 @@ def run_seed():
                 "precio": 39990,
                 "precio_anterior": 45990,
                 "etiqueta": "Nuevo",
-                "descripcion": "Estructura acanalada que estiliza y proporciona ajuste flexible para yoga, pilates o entrenamiento de fuerza."
+                "descripcion": "Estructura acanalada que estiliza y proporciona ajuste flexible para yoga, pilates o entrenamiento de fuerza.",
+                "variantes_def": [
+                    {"color": "Púrpura Amatista", "color_hex": "#4A2040", "tallas": "S,M,L"},
+                    {"color": "Negro Onix", "color_hex": "#18181b", "tallas": "XS,S,M,L"}
+                ]
             }
         ]
 
@@ -252,27 +280,28 @@ def run_seed():
             cat = categorias_map.get(p["categoria"])
             if not cat:
                 continue
-            color_hex_val = colores_map.get(p["color"]).hex if p["color"] in colores_map else None
-            if not color_hex_val:
-                for k, v in colores_map.items():
-                    if k.lower() in p["color"].lower():
-                        color_hex_val = v.hex
-                        break
-            if not color_hex_val:
-                color_hex_val = "#18181b"
+
+            b64_img = get_product_photo_webp(p["nombre"])
+            # Construir variantes completas
+            vars_list = []
+            for v_def in p.get("variantes_def", []):
+                vars_list.append({
+                    "color": v_def["color"],
+                    "color_hex": v_def.get("color_hex") or (colores_map.get(v_def["color"]).hex if v_def["color"] in colores_map else "#18181b"),
+                    "imagenes": [b64_img] if b64_img else [],
+                    "tallas": v_def["tallas"]
+                })
+            
+            if not vars_list:
+                vars_list = [{
+                    "color": p["color"],
+                    "color_hex": "#18181b",
+                    "imagenes": [b64_img] if b64_img else [],
+                    "tallas": p["talla"]
+                }]
 
             prod_existente = db.query(Producto).filter(Producto.nombre == p["nombre"]).first()
             if not prod_existente:
-                b64_img = get_product_photo_webp(p["nombre"])
-                # Variantes base
-                vars_list = [
-                    {
-                        "color": p["color"],
-                        "color_hex": color_hex_val,
-                        "imagenes": [b64_img] if b64_img else [],
-                        "tallas": p["talla"]
-                    }
-                ]
                 nuevo_prod = Producto(
                     categoria_id=cat.id,
                     nombre=p["nombre"],
@@ -287,21 +316,14 @@ def run_seed():
                     activo=True
                 )
                 db.add(nuevo_prod)
-                print(f"✓ Producto creado: {p['nombre']} (${p['precio']} CLP)")
+                print(f"✓ Producto creado con {len(vars_list)} colores: {p['nombre']}")
             else:
-                # Sincronizar variantes y color_hex si estaban vacías
-                try:
-                    cur_vars = json.loads(prod_existente.variantes) if prod_existente.variantes else []
-                    updated = False
-                    for v in cur_vars:
-                        if not v.get("color_hex"):
-                            v["color_hex"] = color_hex_val
-                            updated = True
-                    if updated:
-                        prod_existente.variantes = json.dumps(cur_vars)
-                        db.commit()
-                except Exception:
-                    pass
+                # Actualizar variantes completas en la base de datos
+                prod_existente.variantes = json.dumps(vars_list)
+                if not prod_existente.imagen_base64 or len(prod_existente.imagen_base64) < 100:
+                    prod_existente.imagen_base64 = b64_img
+                db.commit()
+                print(f"✓ Producto actualizado con {len(vars_list)} colores: {p['nombre']}")
 
         # 4. PLANTILLA HERO PRINCIPAL
         hero = db.query(HeroTemplate).first()
