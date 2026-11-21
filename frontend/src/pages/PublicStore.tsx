@@ -25,17 +25,19 @@ export const PublicStore: React.FC = () => {
     initialIndex: number;
   } | null>(null);
 
-  // Cargar Categorías Activas y Todos los Productos en la carga inicial
+  // Cargar Categorías Activas y Todos los Productos en la carga inicial de forma ultra-resiliente
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [cats, prods] = await Promise.all([
+        const [catsRes, prodsRes] = await Promise.allSettled([
           api.getPublicCategorias(),
           api.getPublicProductos(),
         ]);
-        setCategorias(cats);
-        setAllProductos(prods);
-        setProductos(prods);
+        if (catsRes.status === 'fulfilled') setCategorias(catsRes.value);
+        if (prodsRes.status === 'fulfilled') {
+          setAllProductos(prodsRes.value);
+          setProductos(prodsRes.value);
+        }
       } catch (e) {
         console.error('Error cargando catálogo inicial', e);
       } finally {

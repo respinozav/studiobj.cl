@@ -71,9 +71,24 @@ CREATE TABLE IF NOT EXISTS bdstudiobj.colores (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 6. Tabla de Plantillas de Portada (Hero)
+CREATE TABLE IF NOT EXISTS bdstudiobj.hero_templates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nombre VARCHAR(120) NOT NULL,
+    tag VARCHAR(100) NOT NULL DEFAULT 'Edición Dark Luxury 2026',
+    titulo_linea_1 VARCHAR(150) NOT NULL DEFAULT 'Esculpe Tu Fuerza Con',
+    titulo_linea_2 VARCHAR(150) NOT NULL DEFAULT 'Elegancia Exclusiva',
+    subtitulo TEXT NOT NULL DEFAULT 'Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.',
+    boton_texto VARCHAR(60) NOT NULL DEFAULT 'Ver Colección',
+    es_predeterminada BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Índices de alto rendimiento
 CREATE INDEX IF NOT EXISTS idx_productos_categoria_activo ON bdstudiobj.productos (categoria_id, activo);
 CREATE INDEX IF NOT EXISTS idx_productos_activo_created ON bdstudiobj.productos (activo, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON bdstudiobj.usuarios (rol_id);
 CREATE INDEX IF NOT EXISTS idx_categorias_activo ON bdstudiobj.categorias (activo);
 CREATE INDEX IF NOT EXISTS idx_colores_activo ON bdstudiobj.colores (activo);
+CREATE INDEX IF NOT EXISTS idx_hero_templates_predeterminada ON bdstudiobj.hero_templates (es_predeterminada);

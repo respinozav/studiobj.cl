@@ -8,7 +8,7 @@ from PIL import Image
 from sqlalchemy import text
 from app.config import settings
 from app.database import engine, SessionLocal, Base
-from app.models import Rol, Usuario, Categoria, Producto
+from app.models import Rol, Usuario, Categoria, Producto, HeroTemplate
 from app.security import hash_password
 
 products_images_local = {
@@ -67,10 +67,11 @@ def run_seed():
                     print(f"Nota en políticas: {e}")
         except Exception as e:
             print(f"Aviso al ejecutar DDL directo: {e}")
-    else:
-        print("Creando tablas con SQLAlchemy metadata...")
-        Base.metadata.create_all(bind=engine)
-        print("✓ Tablas creadas.")
+    
+    # Crear todas las tablas con SQLAlchemy metadata para garantizar sincronización total
+    print("Sincronizando modelos con SQLAlchemy metadata...")
+    Base.metadata.create_all(bind=engine)
+    print("✓ Tablas y metadata sincronizadas.")
 
     db = SessionLocal()
     try:
@@ -222,6 +223,21 @@ def run_seed():
                 )
                 db.add(nuevo_prod)
                 print(f"✓ Producto creado: {p['nombre']} (${p['precio']} CLP)")
+
+        # 4. PLANTILLA HERO PRINCIPAL
+        hero = db.query(HeroTemplate).first()
+        if not hero:
+            hero = HeroTemplate(
+                nombre="Edición Dark Luxury Oficial",
+                tag="Edición Dark Luxury 2026",
+                titulo_linea_1="Esculpe Tu Fuerza Con",
+                titulo_linea_2="Elegancia Exclusiva",
+                subtitulo="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.",
+                boton_texto="Ver Colección",
+                es_predeterminada=True
+            )
+            db.add(hero)
+            print("✓ Plantilla Hero predeterminada creada.")
 
         db.commit()
         print("\n==================================================")

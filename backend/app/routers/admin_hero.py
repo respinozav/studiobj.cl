@@ -16,29 +16,44 @@ router = APIRouter(prefix="/admin/hero", tags=["Admin Hero Plantillas"])
 admin_required = require_role(["Admin"])
 
 def get_or_seed_default_hero(db: Session) -> HeroTemplate:
-    hero = db.query(HeroTemplate).filter(HeroTemplate.es_predeterminada == True).first()
-    if not hero:
-        # Si no hay ninguna predeterminada, verificar si hay alguna
-        hero = db.query(HeroTemplate).order_by(HeroTemplate.created_at.desc()).first()
-        if hero:
-            hero.es_predeterminada = True
-            db.commit()
-            db.refresh(hero)
-        else:
-            # Crear la plantilla inicial por defecto
-            hero = HeroTemplate(
-                nombre="Edición Dark Luxury Oficial",
-                tag="Edición Dark Luxury 2026",
-                titulo_linea_1="Esculpe Tu Fuerza Con",
-                titulo_linea_2="Elegancia Exclusiva",
-                subtitulo="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.",
-                boton_texto="Ver Colección",
-                es_predeterminada=True
-            )
-            db.add(hero)
-            db.commit()
-            db.refresh(hero)
-    return hero
+    try:
+        hero = db.query(HeroTemplate).filter(HeroTemplate.es_predeterminada == True).first()
+        if not hero:
+            # Si no hay ninguna predeterminada, verificar si hay alguna
+            hero = db.query(HeroTemplate).order_by(HeroTemplate.created_at.desc()).first()
+            if hero:
+                hero.es_predeterminada = True
+                db.commit()
+                db.refresh(hero)
+            else:
+                # Crear la plantilla inicial por defecto
+                hero = HeroTemplate(
+                    nombre="Edición Dark Luxury Oficial",
+                    tag="Edición Dark Luxury 2026",
+                    titulo_linea_1="Esculpe Tu Fuerza Con",
+                    titulo_linea_2="Elegancia Exclusiva",
+                    subtitulo="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.",
+                    boton_texto="Ver Colección",
+                    es_predeterminada=True
+                )
+                db.add(hero)
+                db.commit()
+                db.refresh(hero)
+        return hero
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        return HeroTemplate(
+            nombre="Edición Dark Luxury Oficial",
+            tag="Edición Dark Luxury 2026",
+            titulo_linea_1="Esculpe Tu Fuerza Con",
+            titulo_linea_2="Elegancia Exclusiva",
+            subtitulo="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.",
+            boton_texto="Ver Colección",
+            es_predeterminada=True
+        )
 
 @router.get("/plantillas", response_model=List[HeroTemplateResponse])
 def list_hero_templates(db: Session = Depends(get_db), _=Depends(admin_required)):
