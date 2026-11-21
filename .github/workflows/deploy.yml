@@ -1,0 +1,66 @@
+name: Deploy StudioBJ to AWS
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-studiobj-aws
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ejecutar despliegue vía SSH en AWS Ubuntu
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USERNAME }}
+          key: ${{ secrets.AWS_PRIVATE_KEY }}
+          script: |
+            set +e
+            REPORT_FILE="/tmp/status_studiobj.txt"
+            echo "==========================================" > "$REPORT_FILE" 2>&1
+            echo "DESPLIEGUE EN AWS - STUDIOBJ.CL: $(date)" >> "$REPORT_FILE" 2>&1
+            echo "==========================================" >> "$REPORT_FILE" 2>&1
+
+            echo "--- VERIFICANDO DIRECTORIO /var/www/studiobj.cl ---" >> "$REPORT_FILE" 2>&1
+            if [ ! -d "/var/www/studiobj.cl" ]; then
+              echo "Directorio /var/www/studiobj.cl no existe. Creando y clonando repositorio..." >> "$REPORT_FILE" 2>&1
+              sudo mkdir -p /var/www/studiobj.cl >> "$REPORT_FILE" 2>&1 || true
+              sudo chown -R $(whoami):$(whoami) /var/www/studiobj.cl >> "$REPORT_FILE" 2>&1 || true
+              git clone https://github.com/respinozav/studiobj.cl.git /var/www/studiobj.cl >> "$REPORT_FILE" 2>&1 || true
+            fi
+
+            echo "--- AJUSTANDO PERMISOS Y ACTUALIZANDO GIT ---" >> "$REPORT_FILE" 2>&1
+            sudo chown -R $(whoami):$(whoami) /var/www/studiobj.cl >> "$REPORT_FILE" 2>&1 || true
+            cd /var/www/studiobj.cl || exit 1
+            git checkout main >> "$REPORT_FILE" 2>&1 || true
+            git fetch origin main >> "$REPORT_FILE" 2>&1 || true
+            git reset --hard origin/main >> "$REPORT_FILE" 2>&1 || true
+            git clean -fd deploy/ >> "$REPORT_FILE" 2>&1 || true
+
+            echo "--- ASEGURANDO CONFIGURACION DE ENTORNO (.env) ---" >> "$REPORT_FILE" 2>&1
+            if [ ! -f "/var/www/studiobj.cl/backend/.env" ] && [ -f "/var/www/studiobj.cl/backend/.env.example" ]; then
+              cp /var/www/studiobj.cl/backend/.env.example /var/www/studiobj.cl/backend/.env
+              sudo chmod 644 /var/www/studiobj.cl/backend/.env 2>/dev/null || true
+              sudo chown www-data:www-data /var/www/studiobj.cl/backend/.env 2>/dev/null || true
+            fi
+
+            echo "--- EJECUTANDO SCRIPT DE DESPLIEGUE ---" >> "$REPORT_FILE" 2>&1
+            chmod +x /var/www/studiobj.cl/deploy/deploy.sh 2>/dev/null || true
+            cd /var/www/studiobj.cl/deploy || exit 1
+            bash deploy.sh >> "$REPORT_FILE" 2>&1 || echo "deploy.sh finalizo con advertencias" >> "$REPORT_FILE" 2>&1
+
+            # Imprimir en consola de GitHub Actions
+            cat "$REPORT_FILE"
+
+            # Copiar reporte diagnóstico a la carpeta dist pública para consulta
+            if [ -d "/var/www/studiobj.cl/frontend/dist" ]; then
+              sudo cp "$REPORT_FILE" "/var/www/studiobj.cl/frontend/dist/status_diag.txt" 2>/dev/null || true
+              sudo chmod 644 "/var/www/studiobj.cl/frontend/dist/status_diag.txt" 2>/dev/null || true
+            fi
+            exit 0

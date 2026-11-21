@@ -1,0 +1,16 @@
+[Unit]
+Description=StudioBJ FastAPI Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/studiobj.cl/backend
+EnvironmentFile=/var/www/studiobj.cl/backend/.env
+ExecStart=/var/www/studiobj.cl/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8004 --proxy-headers
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
