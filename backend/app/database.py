@@ -1,6 +1,7 @@
 import logging
 import os
 from sqlalchemy import create_engine
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import declarative_base, sessionmaker
 from app.config import settings
 
@@ -12,16 +13,33 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 LOCAL_DB_PATH = os.path.join(BASE_DIR, "studiobj_local.db").replace("\\", "/")
 
 def create_configured_engine():
-    is_pg = settings.DATABASE_URL.startswith("postgresql")
     connect_args = {}
-    if is_pg:
+    is_pg = False
+
+    # Construcción segura de URL con encoding automático de contraseña para caracteres especiales
+    if settings.DB_HOST and settings.DB_PASSWORD:
+        db_url = URL.create(
+            drivername="postgresql+psycopg",
+            username=settings.DB_USER,
+            password=settings.DB_PASSWORD,
+            host=settings.DB_HOST,
+            port=settings.DB_PORT,
+            database=settings.DB_NAME,
+            query={"sslmode": "require"}
+        )
         connect_args["options"] = f"-csearch_path={settings.DB_SCHEMA},public"
+        is_pg = True
+    elif settings.DATABASE_URL.startswith("postgresql"):
+        db_url = settings.DATABASE_URL
+        connect_args["options"] = f"-csearch_path={settings.DB_SCHEMA},public"
+        is_pg = True
     else:
+        db_url = settings.DATABASE_URL
         connect_args["check_same_thread"] = False
 
     try:
         eng = create_engine(
-            settings.DATABASE_URL,
+            db_url,
             echo=False,
             pool_pre_ping=True,
             connect_args=connect_args
