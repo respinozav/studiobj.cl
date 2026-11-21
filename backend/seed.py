@@ -91,22 +91,43 @@ def run_seed():
                 print(f"✓ Rol creado: {r_name}")
             roles_map[r_name] = rol
 
-        # 2. USUARIO ADMINISTRADOR
-        admin_email = settings.ADMIN_EMAIL.lower().strip()
-        admin = db.query(Usuario).filter(Usuario.email == admin_email).first()
-        if not admin:
-            admin = Usuario(
-                rol_id=roles_map["Super Admin"].id,
-                nombre=settings.ADMIN_NOMBRE,
-                email=admin_email,
-                password_hash=hash_password(settings.ADMIN_PASSWORD),
-                activo=True
-            )
-            db.add(admin)
-            db.commit()
-            print(f"✓ Usuario Administrador creado: {admin_email} | Password: {settings.ADMIN_PASSWORD}")
-        else:
-            print(f"✓ Usuario Administrador verificado: {admin_email}")
+        # 2. USUARIOS ADMINISTRADORES (Roderick Espinoza y Administrador del Sistema)
+        admin_users_to_ensure = [
+            {
+                "email": "roderick.espinoza@gmail.com",
+                "nombre": "Roderick Espinoza",
+                "password": "12345678",
+                "rol": "Super Admin"
+            },
+            {
+                "email": settings.ADMIN_EMAIL.lower().strip(),
+                "nombre": settings.ADMIN_NOMBRE,
+                "password": settings.ADMIN_PASSWORD,
+                "rol": "Super Admin"
+            }
+        ]
+
+        for u_data in admin_users_to_ensure:
+            u_email = u_data["email"].lower().strip()
+            user_obj = db.query(Usuario).filter(Usuario.email == u_email).first()
+            if not user_obj:
+                user_obj = Usuario(
+                    rol_id=roles_map[u_data["rol"]].id,
+                    nombre=u_data["nombre"],
+                    email=u_email,
+                    password_hash=hash_password(u_data["password"]),
+                    activo=True
+                )
+                db.add(user_obj)
+                db.commit()
+                print(f"✓ Usuario Administrador creado: {u_email}")
+            else:
+                user_obj.password_hash = hash_password(u_data["password"])
+                user_obj.rol_id = roles_map[u_data["rol"]].id
+                user_obj.activo = True
+                user_obj.nombre = u_data["nombre"]
+                db.commit()
+                print(f"✓ Usuario Administrador actualizado con contraseña activa: {u_email}")
 
         # 3. CATEGORÍAS BASE
         categorias_base = [

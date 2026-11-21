@@ -18,9 +18,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
 
-    ADMIN_EMAIL: str = "admin@studiobj.cl"
-    ADMIN_PASSWORD: str = "AdminStudioBJ2026!"
-    ADMIN_NOMBRE: str = "Administrador StudioBJ"
+    ADMIN_EMAIL: str = "roderick.espinoza@gmail.com"
+    ADMIN_PASSWORD: str = "12345678"
+    ADMIN_NOMBRE: str = "Roderick Espinoza"
 
     model_config = {
         "env_file": ".env",
