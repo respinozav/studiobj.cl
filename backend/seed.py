@@ -308,7 +308,7 @@ def run_seed():
         if not hero:
             hero = HeroTemplate(
                 nombre="Edición Dark Luxury Oficial",
-                tag="Edición Dark Luxury 2026",
+                tag="Fitness & Fashion",
                 titulo_linea_1="Esculpe Tu Fuerza Con",
                 titulo_linea_2="Elegancia Exclusiva",
                 subtitulo="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.",

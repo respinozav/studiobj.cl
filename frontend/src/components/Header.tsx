@@ -25,9 +25,14 @@ export const Header: React.FC = () => {
               className="relative w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-full border border-[#D9A6B8]/60 shadow-[0_0_15px_rgba(217,166,184,0.35)] group-hover:scale-105 group-hover:shadow-[0_0_22px_rgba(217,166,184,0.55)] transition-all duration-300"
             />
           </div>
-          <span className="font-editorial text-lg sm:text-xl font-medium tracking-[0.2em] text-white/90 uppercase leading-none group-hover:text-white transition-colors">
-            Studio<span className="text-[#D9A6B8] font-semibold">BJ</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="font-editorial text-lg sm:text-xl font-medium tracking-[0.2em] text-white/90 uppercase leading-none group-hover:text-white transition-colors">
+              Studio<span className="text-[#D9A6B8] font-semibold">BJ</span>
+            </span>
+            <span className="text-[8px] sm:text-[9px] tracking-[0.22em] text-[#D9A6B8]/80 uppercase font-sans font-medium mt-0.5">
+              Fitness & Fashion
+            </span>
+          </div>
         </button>
 
         {/* Botón Carrito / Bolso con Contador en Tiempo Real */}

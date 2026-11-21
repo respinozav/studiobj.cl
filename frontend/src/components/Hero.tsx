@@ -35,7 +35,7 @@ export const Hero: React.FC = () => {
     }
   };
 
-  const tag = heroData?.tag || 'Edición Dark Luxury 2026';
+  const tag = heroData?.tag || 'Fitness & Fashion';
   const tituloLinea1 = heroData?.titulo_linea_1 || 'Esculpe Tu Fuerza Con';
   const tituloLinea2 = heroData?.titulo_linea_2 || 'Elegancia Exclusiva';
   const subtitulo =

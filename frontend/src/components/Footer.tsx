@@ -14,9 +14,14 @@ export const Footer: React.FC = () => {
               alt="StudioBJ Logo"
               className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(217,166,184,0.3)]"
             />
-            <span className="font-editorial text-2xl font-bold tracking-wider text-white uppercase">
-              Studio<span className="text-[#D9A6B8]">BJ</span>
-            </span>
+            <div>
+              <span className="font-editorial text-2xl font-bold tracking-wider text-white uppercase block leading-tight">
+                Studio<span className="text-[#D9A6B8]">BJ</span>
+              </span>
+              <span className="text-[10px] tracking-[0.25em] text-[#D9A6B8] uppercase font-sans font-medium block">
+                Fitness & Fashion
+              </span>
+            </div>
           </div>
           <p className="text-xs text-gray-400 max-w-sm">
             Ropa deportiva femenina Dark Luxury. Diseñada para potenciar tu seguridad, silueta y rendimiento físico.
