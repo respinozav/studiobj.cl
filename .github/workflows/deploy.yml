@@ -44,10 +44,8 @@ jobs:
             git clean -fd deploy/ >> "$REPORT_FILE" 2>&1 || true
 
             echo "--- ASEGURANDO CONFIGURACION DE ENTORNO (.env) ---" >> "$REPORT_FILE" 2>&1
-            if [ ! -f "/var/www/studiobj.cl/backend/.env" ]; then
-              if [ -f "/var/www/studiobj.cl/backend/.env.example" ]; then
-                cp /var/www/studiobj.cl/backend/.env.example /var/www/studiobj.cl/backend/.env
-              fi
+            if [ ! -f "/var/www/studiobj.cl/backend/.env" ] || grep -q "your-rds-host" "/var/www/studiobj.cl/backend/.env"; then
+              cp -f /var/www/studiobj.cl/backend/.env.example /var/www/studiobj.cl/backend/.env
             fi
             sudo chmod 644 /var/www/studiobj.cl/backend/.env 2>/dev/null || true
             sudo chown www-data:www-data /var/www/studiobj.cl/backend/.env 2>/dev/null || true

@@ -173,10 +173,10 @@ if [ "$IS_BACKEND" = true ]; then
 
     cd "$BACKEND_DIR"
 
-    # Asegurar archivo .env
-    if [ ! -f "$BACKEND_DIR/.env" ] && [ -f "$BACKEND_DIR/.env.example" ]; then
-        echo "Creando .env a partir de .env.example..."
-        cp "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
+    # Asegurar archivo .env con credenciales reales de AWS RDS
+    if [ ! -f "$BACKEND_DIR/.env" ] || grep -q "your-rds-host" "$BACKEND_DIR/.env"; then
+        echo "Actualizando .env con credenciales reales a partir de .env.example..."
+        cp -f "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
     fi
 
     ACTIVE_VENV="$BACKEND_DIR/venv"
@@ -204,6 +204,9 @@ if [ "$IS_BACKEND" = true ]; then
 
     echo "Validando importación de FastAPI app.main..."
     PYTHONPATH="$BACKEND_DIR" "$ACTIVE_VENV/bin/python" -c "import app.main; print('app.main importado exitosamente')"
+
+    echo "Ejecutando seed e inicialización de esquema/tablas en base de datos..."
+    PYTHONPATH="$BACKEND_DIR" "$ACTIVE_VENV/bin/python" seed.py || echo "Aviso en seed.py"
 
     deactivate
 
@@ -252,14 +255,17 @@ EOF
     echo "Esperando 4 segundos a que uvicorn inicie en el puerto $TARGET_PORT..."
     sleep 4
 
-    # Verificación de salud del backend
+    # Verificación de salud y productos del backend
     HEALTH_OK=false
     for attempt in {1..10}; do
         HTTP_CODE=$(curl -s -o /tmp/resp_studiobj.json -w "%{http_code}" "http://127.0.0.1:$TARGET_PORT/health" 2>/dev/null || echo "000")
-        if [ "$HTTP_CODE" = "200" ]; then
-            echo -e "${GREEN}¡Backend StudioBJ respondiendo 200 OK en puerto $TARGET_PORT! (Intento $attempt)${NC}"
+        PROD_CODE=$(curl -s -o /tmp/resp_prod.json -w "%{http_code}" "http://127.0.0.1:$TARGET_PORT/api/v1/public/productos" 2>/dev/null || echo "000")
+        if [ "$HTTP_CODE" = "200" ] && [ "$PROD_CODE" = "200" ]; then
+            echo -e "${GREEN}¡Backend StudioBJ respondiendo 200 OK en puerto $TARGET_PORT (/health y /api/v1/public/productos)! (Intento $attempt)${NC}"
             HEALTH_OK=true
             break
+        elif [ "$HTTP_CODE" = "200" ]; then
+            echo -e "${YELLOW}Backend activo pero /api/v1/public/productos devolvió HTTP $PROD_CODE. Reintentando...${NC}"
         fi
         sleep 1
     done

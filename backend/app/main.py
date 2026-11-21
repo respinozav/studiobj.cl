@@ -1,6 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import logging
+from app.database import engine, Base
+from app import models
 from app.routers import auth, public, admin_categorias, admin_productos, admin_colores, admin_usuarios, admin_roles, admin_hero
+
+logger = logging.getLogger("studiobj.main")
+
+# Inicialización segura de esquema y tablas al arrancar la app
+try:
+    Base.metadata.create_all(bind=engine)
+    logger.info("Base de datos y metadata verificada exitosamente.")
+except Exception as e:
+    logger.warning(f"Aviso al inicializar metadata: {e}")
 
 app = FastAPI(
     title="StudioBJ E-Commerce API",
