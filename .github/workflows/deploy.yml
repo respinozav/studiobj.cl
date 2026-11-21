@@ -13,6 +13,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Ejecutar despliegue vía SSH en AWS Ubuntu
         uses: appleboy/ssh-action@v1.0.3
@@ -43,10 +44,48 @@ jobs:
             git reset --hard origin/main >> "$REPORT_FILE" 2>&1 || true
             git clean -fd deploy/ >> "$REPORT_FILE" 2>&1 || true
 
-            echo "--- ASEGURANDO CONFIGURACION DE ENTORNO (.env) ---" >> "$REPORT_FILE" 2>&1
-            if [ ! -f "/var/www/studiobj.cl/backend/.env" ] || ! grep -q "roderick.espinoza" "/var/www/studiobj.cl/backend/.env"; then
-              cp -f /var/www/studiobj.cl/backend/.env.example /var/www/studiobj.cl/backend/.env
+            echo "--- INYECTANDO CREDENCIALES AWS RDS DESDE ENVIRONMENT PRODUCTION ---" >> "$REPORT_FILE" 2>&1
+            BD_HOST="${{ vars.AWS_HOST_BD }}"
+            BD_USER="${{ vars.AWS_USER_BD }}"
+            BD_PASS="${{ secrets.AWS_PASSWORD_BD }}"
+            BD_SCHEMA="${{ vars.AWS_SCHEME_BD }}"
+
+            if [ -z "$BD_HOST" ]; then
+              BD_HOST="ls-b12cc9081f17b594187264e8c7fe42119a9bb93f.cgt2s428cp85.us-east-1.rds.amazonaws.com"
             fi
+            if [ -z "$BD_USER" ]; then
+              BD_USER="dbmasteruser"
+            fi
+            if [ -z "$BD_SCHEMA" ]; then
+              BD_SCHEMA="bdstudiobj"
+            fi
+
+            sudo tee /var/www/studiobj.cl/backend/.env > /dev/null << EOF
+# PostgreSQL AWS RDS - StudioBJ (Producción)
+DB_HOST=$BD_HOST
+DB_PORT=5432
+DB_NAME=postgres
+DB_USER=$BD_USER
+DB_PASSWORD=$BD_PASS
+DB_SCHEMA=$BD_SCHEMA
+DATABASE_URL=postgresql+psycopg://${BD_USER}:${BD_PASS}@${BD_HOST}:5432/postgres?sslmode=require
+
+# Seguridad JWT
+JWT_SECRET_KEY=9a8f3b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=480
+
+# Usuario Admin Inicial
+ADMIN_EMAIL=roderick.espinoza@gmail.com
+ADMIN_PASSWORD=12345678
+ADMIN_NOMBRE=Roderick Espinoza
+
+# PostgREST
+PGRST_DB_URI=postgresql://${BD_USER}:${BD_PASS}@${BD_HOST}:5432/postgres?sslmode=require
+PGRST_DB_SCHEMAS=$BD_SCHEMA
+PGRST_DB_ANON_ROLE=web_anon
+PGRST_SERVER_PORT=3001
+EOF
             sudo chmod 644 /var/www/studiobj.cl/backend/.env 2>/dev/null || true
             sudo chown www-data:www-data /var/www/studiobj.cl/backend/.env 2>/dev/null || true
 

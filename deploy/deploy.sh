@@ -173,9 +173,9 @@ if [ "$IS_BACKEND" = true ]; then
 
     cd "$BACKEND_DIR"
 
-    # Asegurar archivo .env con credenciales reales de AWS RDS y usuario admin actualizado
-    if [ ! -f "$BACKEND_DIR/.env" ] || ! grep -q "roderick.espinoza" "$BACKEND_DIR/.env"; then
-        echo "Actualizando .env con credenciales reales a partir de .env.example..."
+    # Asegurar archivo .env si no fue inyectado previamente
+    if [ ! -f "$BACKEND_DIR/.env" ]; then
+        echo "Creando .env a partir de .env.example..."
         cp -f "$BACKEND_DIR/.env.example" "$BACKEND_DIR/.env"
     fi
 
