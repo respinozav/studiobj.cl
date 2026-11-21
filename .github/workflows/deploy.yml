@@ -44,23 +44,33 @@ jobs:
             git clean -fd deploy/ >> "$REPORT_FILE" 2>&1 || true
 
             echo "--- ASEGURANDO CONFIGURACION DE ENTORNO (.env) ---" >> "$REPORT_FILE" 2>&1
-            if [ ! -f "/var/www/studiobj.cl/backend/.env" ] && [ -f "/var/www/studiobj.cl/backend/.env.example" ]; then
-              cp /var/www/studiobj.cl/backend/.env.example /var/www/studiobj.cl/backend/.env
-              sudo chmod 644 /var/www/studiobj.cl/backend/.env 2>/dev/null || true
-              sudo chown www-data:www-data /var/www/studiobj.cl/backend/.env 2>/dev/null || true
+            if [ ! -f "/var/www/studiobj.cl/backend/.env" ]; then
+              if [ -f "/var/www/studiobj.cl/backend/.env.example" ]; then
+                cp /var/www/studiobj.cl/backend/.env.example /var/www/studiobj.cl/backend/.env
+              fi
             fi
+            sudo chmod 644 /var/www/studiobj.cl/backend/.env 2>/dev/null || true
+            sudo chown www-data:www-data /var/www/studiobj.cl/backend/.env 2>/dev/null || true
 
             echo "--- EJECUTANDO SCRIPT DE DESPLIEGUE ---" >> "$REPORT_FILE" 2>&1
             chmod +x /var/www/studiobj.cl/deploy/deploy.sh 2>/dev/null || true
             cd /var/www/studiobj.cl/deploy || exit 1
             bash deploy.sh >> "$REPORT_FILE" 2>&1 || echo "deploy.sh finalizo con advertencias" >> "$REPORT_FILE" 2>&1
 
-            # Imprimir en consola de GitHub Actions
+            echo "--- ESTADO DE SERVICIOS SYSTEMD ---" >> "$REPORT_FILE" 2>&1
+            sudo systemctl status studiobj-api --no-pager >> "$REPORT_FILE" 2>&1 || true
+
+            echo "--- DIAGNOSTICO DE PUERTOS Y HEALTH CHECKS ---" >> "$REPORT_FILE" 2>&1
+            sudo ss -tulpn | grep -E "studiobj|uvicorn|python|800[0-9]" >> "$REPORT_FILE" 2>&1 || true
+
+            # Imprimir reporte completo en la consola de GitHub Actions
             cat "$REPORT_FILE"
 
-            # Copiar reporte diagnóstico a la carpeta dist pública para consulta
-            if [ -d "/var/www/studiobj.cl/frontend/dist" ]; then
-              sudo cp "$REPORT_FILE" "/var/www/studiobj.cl/frontend/dist/status_diag.txt" 2>/dev/null || true
-              sudo chmod 644 "/var/www/studiobj.cl/frontend/dist/status_diag.txt" 2>/dev/null || true
-            fi
+            # Copiar reporte diagnóstico a la carpeta dist pública para consulta directa via web
+            for PUB_DIR in /var/www/studiobj.cl/frontend/dist /var/www/html/studiobj.cl; do
+              if [ -d "$PUB_DIR" ]; then
+                sudo cp "$REPORT_FILE" "$PUB_DIR/status_diag.txt" 2>/dev/null || true
+                sudo chmod 644 "$PUB_DIR/status_diag.txt" 2>/dev/null || true
+              fi
+            done
             exit 0

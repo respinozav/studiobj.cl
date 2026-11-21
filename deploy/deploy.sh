@@ -2,7 +2,7 @@
 
 ##############################################################################
 # DEPLOY UNIVERSAL - STUDIOBJ.CL (Dark Luxury E-Commerce)
-# React (Vite) + FastAPI (Python)
+# React (Vite) + FastAPI (Python) + Nginx + HTTPS (Certbot)
 #
 # Soporta:
 #   - Detección automática del proyecto y entorno
@@ -12,6 +12,7 @@
 #     asigna el siguiente puerto disponible sin colisionar con otras apps)
 #   - Configuración y recarga de Systemd (studiobj-api.service)
 #   - Configuración y recarga de Nginx (/etc/nginx/sites-available/studiobj.cl)
+#   - Configuración automática de HTTPS con Certbot (Let's Encrypt)
 ##############################################################################
 
 set -e
@@ -120,25 +121,42 @@ echo -e "${CYAN}>> Componentes detectados:${NC} Backend=$IS_BACKEND, Frontend=$I
 
 TARGET_PORT=""
 
+check_port_free() {
+    local p=$1
+    # 1. Comprobar socket escuchando con ss
+    if sudo ss -tulpn 2>/dev/null | grep -E "(:| )$p\b" >/dev/null 2>&1; then
+        return 1
+    fi
+    # 2. Comprobar con lsof si existe
+    if command -v lsof >/dev/null 2>&1 && sudo lsof -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1; then
+        return 1
+    fi
+    # 3. Comprobar conectividad curl
+    if curl -s -m 1 "http://127.0.0.1:$p" >/dev/null 2>&1; then
+        return 1
+    fi
+    return 0
+}
+
 if [ "$IS_BACKEND" = true ]; then
 
     echo ""
     echo -e "${YELLOW}>> Determinando puerto libre para $SERVICE_NAME...${NC}"
 
-    # Detener temporalmente el servicio studiobj si estuviera corriendo para no bloquear su propio puerto
+    # Detener temporalmente el servicio studiobj si estuviera corriendo para liberar su propio socket
     sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+    sleep 1
 
-    # Iniciar búsqueda secuencial desde el puerto 8000
+    # Iniciar búsqueda secuencial a partir del puerto 8000
     CHECK_PORT=8000
     while true; do
-        # Verificar si el puerto está en escucha por algún proceso (usando ss)
-        if sudo ss -tuln | grep -qE ":$CHECK_PORT\b"; then
-            echo -e "${YELLOW}Puerto $CHECK_PORT ocupado por otra aplicación en el servidor. Buscando siguiente puerto...${NC}"
-            CHECK_PORT=$((CHECK_PORT + 1))
-        else
+        if check_port_free "$CHECK_PORT"; then
             TARGET_PORT=$CHECK_PORT
             echo -e "${GREEN}>>> Puerto libre asignado para StudioBJ Backend: $TARGET_PORT <<<${NC}"
             break
+        else
+            echo -e "${YELLOW}Puerto $CHECK_PORT ocupado por otra aplicación en el servidor. Probando siguiente puerto...${NC}"
+            CHECK_PORT=$((CHECK_PORT + 1))
         fi
     done
 
@@ -175,8 +193,9 @@ if [ "$IS_BACKEND" = true ]; then
     # Activar venv e instalar dependencias
     source "$ACTIVE_VENV/bin/activate"
 
-    echo "Actualizando pip e instalando dependencias Python..."
+    echo "Actualizando pip e instalando dependencias..."
     pip install --upgrade pip
+    pip install --force-reinstall "sniffio>=1.3.1" "anyio>=4.4.0" || true
     pip install -r requirements.txt
     pip install "uvicorn[standard]"
 
@@ -184,14 +203,17 @@ if [ "$IS_BACKEND" = true ]; then
     "$ACTIVE_VENV/bin/uvicorn" --version || echo "Aviso uvicorn version"
 
     echo "Validando importación de FastAPI app.main..."
-    "$ACTIVE_VENV/bin/python" -c "import app.main; print('app.main importado exitosamente')"
+    PYTHONPATH="$BACKEND_DIR" "$ACTIVE_VENV/bin/python" -c "import app.main; print('app.main importado exitosamente')"
 
     deactivate
 
-    # Permisos
-    chmod -R a+rX "$ACTIVE_VENV" 2>/dev/null || true
-    chmod +x "$ACTIVE_VENV/bin/"* 2>/dev/null || true
-    sudo chown -R www-data:www-data "$BACKEND_DIR" 2>/dev/null || true
+    # Permisos completos y robustos para ejecución bajo www-data
+    echo "Asegurando permisos en el directorio del proyecto y base de datos..."
+    sudo touch "$PROJECT_DIR/studiobj_local.db" 2>/dev/null || true
+    sudo chmod -R a+rX "$ACTIVE_VENV" 2>/dev/null || true
+    sudo chmod +x "$ACTIVE_VENV/bin/"* 2>/dev/null || true
+    sudo chown -R www-data:www-data "$BACKEND_DIR" "$PROJECT_DIR/studiobj_local.db" 2>/dev/null || true
+    sudo chmod -R 775 "$BACKEND_DIR" 2>/dev/null || true
 
     ########################################
     # CONFIGURACIÓN DEL SERVICIO SYSTEMD
@@ -212,7 +234,8 @@ Type=simple
 User=www-data
 Group=www-data
 WorkingDirectory=$BACKEND_DIR
-EnvironmentFile=$BACKEND_DIR/.env
+Environment="PYTHONPATH=$BACKEND_DIR"
+EnvironmentFile=-$BACKEND_DIR/.env
 ExecStart=$ACTIVE_VENV/bin/uvicorn app.main:app --host 127.0.0.1 --port $TARGET_PORT --proxy-headers
 Restart=always
 RestartSec=5
@@ -231,7 +254,7 @@ EOF
 
     # Verificación de salud del backend
     HEALTH_OK=false
-    for attempt in {1..8}; do
+    for attempt in {1..10}; do
         HTTP_CODE=$(curl -s -o /tmp/resp_studiobj.json -w "%{http_code}" "http://127.0.0.1:$TARGET_PORT/health" 2>/dev/null || echo "000")
         if [ "$HTTP_CODE" = "200" ]; then
             echo -e "${GREEN}¡Backend StudioBJ respondiendo 200 OK en puerto $TARGET_PORT! (Intento $attempt)${NC}"
@@ -241,9 +264,13 @@ EOF
         sleep 1
     done
 
+    echo "=== Estado del servicio $SERVICE_NAME ==="
+    sudo systemctl --no-pager --full status "$SERVICE_NAME" || true
+
     if [ "$HEALTH_OK" = false ]; then
         echo -e "${RED}ADVERTENCIA: El backend no devolvió 200 en http://127.0.0.1:$TARGET_PORT/health${NC}"
-        sudo journalctl -u "$SERVICE_NAME" -n 25 --no-pager || true
+        echo "=== Últimos logs de journalctl para $SERVICE_NAME ==="
+        sudo journalctl -u "$SERVICE_NAME" -n 50 --no-pager || true
     fi
 
 fi
@@ -260,9 +287,7 @@ if [ "$IS_FRONTEND" = true ]; then
     cd "$FRONTEND_DIR"
 
     # Inyectar VITE_API_BASE en producción
-    if [ ! -f ".env.production" ]; then
-        echo "VITE_API_BASE=/api/v1" > .env.production
-    fi
+    echo "VITE_API_BASE=/api/v1" > .env.production
 
     echo "Instalando dependencias npm..."
     npm install
@@ -276,7 +301,7 @@ if [ "$IS_FRONTEND" = true ]; then
         sudo cp -R "$NGINX_ROOT"/. "$BACKUP_DIR/$DATE/" 2>/dev/null || true
     fi
 
-    # Copiar también al directorio HTML estándar si es necesario
+    # Copiar también al directorio HTML estándar
     sudo mkdir -p "$NGINX_FALLBACK_ROOT"
     sudo cp -R dist/* "$NGINX_FALLBACK_ROOT"/ 2>/dev/null || true
     sudo chown -R www-data:www-data "$NGINX_FALLBACK_ROOT" 2>/dev/null || true
@@ -356,6 +381,32 @@ sudo nginx -t
 
 echo "Recargando Nginx..."
 sudo systemctl reload nginx
+
+############################################
+# 5. CONFIGURACIÓN DE HTTPS (CERTBOT / SSL)
+############################################
+
+echo ""
+echo -e "${YELLOW}>> Verificando / Configurando HTTPS (Certbot SSL)...${NC}"
+
+# Instalar certbot si no está presente
+if ! command -v certbot >/dev/null 2>&1; then
+    echo "Instalando certbot y módulo nginx..."
+    sudo apt-get update -y || true
+    sudo apt-get install -y certbot python3-certbot-nginx || true
+fi
+
+# Solicitar o renovar certificados SSL para studiobj.cl y www.studiobj.cl
+if command -v certbot >/dev/null 2>&1; then
+    echo "Ejecutando certbot para studiobj.cl y www.studiobj.cl..."
+    sudo certbot --nginx -d studiobj.cl -d www.studiobj.cl --non-interactive --agree-tos --redirect -m admin@studiobj.cl --keep-until-expiring 2>/dev/null || \
+    sudo certbot --nginx -d studiobj.cl --non-interactive --agree-tos --redirect -m admin@studiobj.cl --keep-until-expiring 2>/dev/null || \
+    sudo certbot --nginx -d studiobj.cl -d www.studiobj.cl --non-interactive --agree-tos --redirect --register-unsafely-without-email --keep-until-expiring 2>/dev/null || \
+    echo -e "${YELLOW}Aviso Certbot: No se pudo emitir certificado automáticamente en este momento. Verifique que los registros DNS A de studiobj.cl y www.studiobj.cl apunten a la IP pública de este servidor.${NC}"
+
+    # Recargar Nginx tras posible actualización de certificados
+    sudo nginx -t && sudo systemctl reload nginx || true
+fi
 
 ############################################
 # TIEMPO Y RESUMEN
