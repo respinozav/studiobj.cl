@@ -28,8 +28,10 @@ import {
   ChevronRight,
   Sparkles,
   Copy,
-  Save
+  Save,
+  ZoomIn
 } from 'lucide-react';
+import { Lightbox } from '../components/Lightbox';
 
 const SYSTEM_MODULES = [
   { id: 'productos', label: 'Productos', desc: 'Prendas, fotos por color y tallas' },
@@ -79,12 +81,57 @@ export const getProductAllSizes = (p: Producto): string[] => {
   return Array.from(sizeSet);
 };
 
+export interface ProductImageItem {
+  url: string;
+  color: string;
+}
+
+export const getProductAllImages = (p: Producto): ProductImageItem[] => {
+  const images: ProductImageItem[] = [];
+  const seen = new Set<string>();
+
+  if (p.variantes && Array.isArray(p.variantes)) {
+    p.variantes.forEach((v) => {
+      if (v.imagenes && Array.isArray(v.imagenes)) {
+        v.imagenes.forEach((img) => {
+          if (img && !seen.has(img)) {
+            seen.add(img);
+            images.push({ url: img, color: v.color || p.color || 'Color' });
+          }
+        });
+      }
+    });
+  }
+
+  if (p.imagen_base64 && !seen.has(p.imagen_base64)) {
+    seen.add(p.imagen_base64);
+    images.unshift({ url: p.imagen_base64, color: p.color || 'Principal' });
+  }
+
+  return images;
+};
+
 export const AdminPanel: React.FC = () => {
   const { user, token, logout, isSuperAdmin, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'productos' | 'categorias' | 'colores' | 'hero' | 'usuarios' | 'roles'>('productos');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Estados para Visor de Fotos / Lightbox
+  const [lightboxProduct, setLightboxProduct] = useState<Producto | null>(null);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxInitialIndex, setLightboxInitialIndex] = useState<number>(0);
+  const [lightboxColorName, setLightboxColorName] = useState<string | undefined>(undefined);
+
+  const openProductLightbox = (p: Producto, initialIndex: number = 0, colorName?: string) => {
+    const allImgs = getProductAllImages(p);
+    const urlList = allImgs.length > 0 ? allImgs.map((item) => item.url) : [p.imagen_base64];
+    setLightboxProduct(p);
+    setLightboxImages(urlList);
+    setLightboxInitialIndex(initialIndex);
+    setLightboxColorName(colorName || allImgs[initialIndex]?.color || p.color);
+  };
 
   // Estados para Módulo Portada / Hero
   const [heroPlantillas, setHeroPlantillas] = useState<HeroTemplate[]>([]);
@@ -1511,12 +1558,22 @@ export const AdminPanel: React.FC = () => {
                       className="glass-card rounded-xl border border-[#D9A6B8]/20 bg-[#261521]/95 p-3.5 shadow-lg flex flex-col justify-between gap-3"
                     >
                       <div className="flex gap-3 items-start">
-                        {/* Miniatura */}
-                        <img
-                          src={p.imagen_base64}
-                          alt={p.nombre}
-                          className="w-16 h-20 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/25 flex-shrink-0"
-                        />
+                        {/* Miniatura Táctil con Visor */}
+                        <div
+                          onClick={() => openProductLightbox(p, 0)}
+                          className="relative group cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
+                          title="Tocar para ver todas las fotos a pantalla completa"
+                        >
+                          <img
+                            src={p.imagen_base64}
+                            alt={p.nombre}
+                            className="w-16 h-20 object-cover rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/25 shadow-md"
+                          />
+                          <div className="absolute bottom-1 right-1 bg-black/80 backdrop-blur-xs text-[#D9A6B8] text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-[#D9A6B8]/30 flex items-center gap-0.5 shadow-sm">
+                            <ZoomIn className="w-2.5 h-2.5" />
+                            <span>{getProductAllImages(p).length}</span>
+                          </div>
+                        </div>
                         {/* Info Principal */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1 mb-1">
@@ -1534,31 +1591,38 @@ export const AdminPanel: React.FC = () => {
                             {p.nombre}
                           </h3>
 
-                          {/* Colores y Tallas por cada variante */}
-                          <div className="mt-2 space-y-1.5">
+                          {/* Colores Asociados (Punto de color y nombre, pinchar abre la foto) */}
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                             {getProductAllVariants(p).map((v, vIdx) => (
                               <div
                                 key={vIdx}
-                                className="p-1.5 rounded-lg bg-[#1C0F18]/90 border border-[#D9A6B8]/20 flex flex-col gap-1"
+                                onClick={() => {
+                                  const allImgs = getProductAllImages(p);
+                                  const targetIdx = allImgs.findIndex((img) => img.color === v.color);
+                                  openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#1C0F18] border border-[#D9A6B8]/20 cursor-pointer active:scale-95"
+                                title={`Ver foto de ${v.color}`}
                               >
-                                <div className="flex items-center gap-1.5 text-xs">
-                                  <span
-                                    className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-sm flex-shrink-0"
-                                    style={{ backgroundColor: v.color_hex }}
-                                  />
-                                  <span className="font-semibold text-gray-100">{v.color}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-1 pl-5">
-                                  {v.tallas.map((t, tIdx) => (
-                                    <span
-                                      key={tIdx}
-                                      className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[9px] font-bold text-[#D9A6B8]"
-                                    >
-                                      {t}
-                                    </span>
-                                  ))}
-                                </div>
+                                <span
+                                  className="w-3 h-3 rounded-full border border-white/50 shadow-sm flex-shrink-0"
+                                  style={{ backgroundColor: v.color_hex }}
+                                />
+                                <span className="text-[11px] text-gray-200 font-medium">{v.color}</span>
                               </div>
+                            ))}
+                          </div>
+
+                          {/* Tallas del Producto */}
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {getProductAllSizes(p).map((t, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-[10px] font-bold text-gray-200"
+                              >
+                                <Check className="w-2.5 h-2.5 text-emerald-400 stroke-[3]" />
+                                {t}
+                              </span>
                             ))}
                           </div>
 
@@ -1621,7 +1685,8 @@ export const AdminPanel: React.FC = () => {
                       <thead className="bg-[#311B2B] text-[#D9A6B8] uppercase text-[10px] tracking-wider border-b border-[#D9A6B8]/20">
                         <tr>
                           <th className="p-3">Foto</th>
-                          <th className="p-3">Nombre & Color</th>
+                          <th className="p-3">Nombre</th>
+                          <th className="p-3">Color</th>
                           <th className="p-3">Categoría</th>
                           <th className="p-3">Tallas</th>
                           <th className="p-3">Precio</th>
@@ -1634,28 +1699,50 @@ export const AdminPanel: React.FC = () => {
                         {paginatedProductos.map((p) => (
                           <tr key={p.id} className="hover:bg-[#311B2B]/40 transition-colors">
                             <td className="p-3">
-                              <img
-                                src={p.imagen_base64}
-                                alt={p.nombre}
-                                className="w-12 h-14 object-cover rounded bg-[#1C0F18] border border-[#D9A6B8]/20"
-                              />
+                              <div
+                                onClick={() => openProductLightbox(p, 0)}
+                                className="relative group cursor-pointer inline-block"
+                                title="Pinchar para ver todas las fotos a pantalla completa"
+                              >
+                                <img
+                                  src={p.imagen_base64}
+                                  alt={p.nombre}
+                                  className="w-12 h-14 object-cover rounded bg-[#1C0F18] border border-[#D9A6B8]/20 group-hover:border-[#D9A6B8] transition-all group-hover:scale-105 shadow-md"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center text-white">
+                                  <ZoomIn className="w-4 h-4 text-[#D9A6B8]" />
+                                </div>
+                                {getProductAllImages(p).length > 1 && (
+                                  <span className="absolute -bottom-1 -right-1 bg-[#261521] border border-[#D9A6B8]/50 text-[#D9A6B8] text-[9px] font-bold px-1 rounded-full shadow-sm flex items-center gap-0.5">
+                                    +{getProductAllImages(p).length}
+                                  </span>
+                                )}
+                              </div>
                             </td>
+                            {/* Columna Nombre: Solo el nombre del producto */}
                             <td className="p-3">
                               <div className="font-semibold text-white text-sm">{p.nombre}</div>
-                              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            </td>
+                            {/* Columna Color: Solo el color que tiene asociado (el punto y nombre) */}
+                            <td className="p-3">
+                              <div className="flex flex-col gap-1.5">
                                 {getProductAllVariants(p).map((v, vIdx) => (
                                   <div
                                     key={vIdx}
-                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#1C0F18]/90 border border-[#D9A6B8]/25 text-[11px]"
+                                    onClick={() => {
+                                      const allImgs = getProductAllImages(p);
+                                      const targetIdx = allImgs.findIndex((img) => img.color === v.color);
+                                      openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color);
+                                    }}
+                                    className="inline-flex items-center gap-2 cursor-pointer group/col"
+                                    title={`Pinchar para ver foto de color ${v.color}`}
                                   >
                                     <span
-                                      className="w-2.5 h-2.5 rounded-full border border-white/40 shadow-inner flex-shrink-0"
+                                      className="w-3.5 h-3.5 rounded-full border border-white/50 shadow-inner flex-shrink-0 group-hover/col:scale-110 transition-transform"
                                       style={{ backgroundColor: v.color_hex }}
-                                      title={v.color}
                                     />
-                                    <span className="font-medium text-gray-200">{v.color}</span>
-                                    <span className="text-[#D9A6B8] font-mono text-[10px]">
-                                      ({v.tallas.join(', ')})
+                                    <span className="text-xs text-gray-200 font-medium group-hover/col:text-[#D9A6B8] transition-colors whitespace-nowrap">
+                                      {v.color}
                                     </span>
                                   </div>
                                 ))}
@@ -3399,6 +3486,16 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* Visor de Imágenes Lightbox Alta Definición */}
+      {lightboxProduct && (
+        <Lightbox
+          producto={lightboxProduct}
+          imagenes={lightboxImages}
+          initialImageIndex={lightboxInitialIndex}
+          colorName={lightboxColorName}
+          onClose={() => setLightboxProduct(null)}
+        />
       )}
     </div>
   );
