@@ -140,19 +140,11 @@ export const AdminPanel: React.FC = () => {
     setLightboxColorName(colorName || allImgs[initialIndex]?.color || p.color);
   };
 
-  // Estados para fila tipo cortina (acordeón desplegable de productos)
-  const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+  // Estado para fila tipo cortina (solo 1 producto desplegado a la vez)
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
 
   const toggleProductExpand = (id: string) => {
-    setExpandedProducts((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+    setExpandedProductId((prev) => (prev === id ? null : id));
   };
 
   // Estados para Módulo Portada / Hero
@@ -1575,7 +1567,7 @@ export const AdminPanel: React.FC = () => {
                 {/* 1. Vista Móvil (Cards Táctiles Mobile-First con Cortina) */}
                 <div className="grid grid-cols-1 gap-3 md:hidden">
                   {paginatedProductos.map((p) => {
-                    const isExpanded = expandedProducts.has(p.id);
+                    const isExpanded = expandedProductId === p.id;
                     return (
                       <div
                         key={p.id}
@@ -1760,7 +1752,7 @@ export const AdminPanel: React.FC = () => {
                       </thead>
                       <tbody className="divide-y divide-[#D9A6B8]/10 bg-[#261521]/60">
                         {paginatedProductos.map((p) => {
-                          const isExpanded = expandedProducts.has(p.id);
+                          const isExpanded = expandedProductId === p.id;
                           return (
                             <React.Fragment key={p.id}>
                               {/* Fila Principal Compacta */}
