@@ -76,8 +76,9 @@ export const PublicStore: React.FC = () => {
     const schemaData = {
       '@context': 'https://schema.org',
       '@type': 'ItemList',
-      name: 'Catálogo Oficial StudioBJ – Activewear & Fitness Fashion',
-      description: 'Prendas deportivas de compresión inteligente, sets y calzas en Chile',
+      name: 'Catálogo Oficial StudioBJ – Ropa Deportiva y Activewear San Bernardo & Chile',
+      description:
+        'Prendas deportivas de compresión inteligente, sets, enteritos y calzas en San Bernardo, Calera de Tango, Buin, Paine, El Bosque y todo Chile',
       numberOfItems: allProductos.length,
       itemListElement: allProductos.slice(0, 25).map((prod, index) => {
         const primaryImg =
