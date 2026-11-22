@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+from sqlalchemy import text
 from app.database import engine, Base
 from app import models
 from app.routers import auth, public, admin_categorias, admin_productos, admin_colores, admin_usuarios, admin_roles, admin_hero
@@ -13,6 +14,13 @@ try:
     logger.info("Base de datos y metadata verificada exitosamente.")
 except Exception as e:
     logger.warning(f"Aviso al inicializar metadata: {e}")
+
+# Migraciones ligeras y seguras idempotentes
+try:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE hero_templates ADD COLUMN IF NOT EXISTS imagenes_fondo TEXT;"))
+except Exception as alter_err:
+    logger.debug(f"Aviso migración hero_templates: {alter_err}")
 
 app = FastAPI(
     title="StudioBJ E-Commerce API",

@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from uuid import UUID
+import json
 
 # --- Auth Schemas ---
 class LoginRequest(BaseModel):
@@ -231,6 +232,7 @@ class HeroTemplateBase(BaseModel):
     subtitulo: str
     boton_texto: str = Field(default="Ver Colección", max_length=60)
     es_predeterminada: bool = False
+    imagenes_fondo: Optional[List[str]] = Field(default_factory=list)
 
 class HeroTemplateCreate(HeroTemplateBase):
     pass
@@ -243,11 +245,25 @@ class HeroTemplateUpdate(BaseModel):
     subtitulo: Optional[str] = None
     boton_texto: Optional[str] = Field(None, max_length=60)
     es_predeterminada: Optional[bool] = None
+    imagenes_fondo: Optional[List[str]] = None
 
 class HeroTemplateResponse(HeroTemplateBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("imagenes_fondo", mode="before")
+    @classmethod
+    def parse_imagenes_fondo(cls, v: Any) -> List[str]:
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                return parsed if isinstance(parsed, list) else []
+            except Exception:
+                return []
+        if isinstance(v, list):
+            return v
+        return []
 
     class Config:
         from_attributes = True

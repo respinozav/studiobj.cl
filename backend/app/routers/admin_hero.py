@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from uuid import UUID
 from typing import List
+import json
 from app.database import get_db
 from app.models import HeroTemplate
 from app.schemas import (
@@ -30,11 +31,12 @@ def get_or_seed_default_hero(db: Session) -> HeroTemplate:
                 hero = HeroTemplate(
                     nombre="Edición Dark Luxury Oficial",
                     tag="Edición Dark Luxury 2026",
-                    titulo_linea_1="Esculpe Tu Fuerza Con",
-                    titulo_linea_2="Elegancia Exclusiva",
-                    subtitulo="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.",
+                    titulo_linea_1="Moldea tu silueta.",
+                    titulo_linea_2="Entrena sin límites.",
+                    subtitulo="Activewear seamless de compresión inteligente y cero transparencia. Pide directo por WhatsApp con despacho rápido a todo Chile.",
                     boton_texto="Ver Colección",
-                    es_predeterminada=True
+                    es_predeterminada=True,
+                    imagenes_fondo=json.dumps(["/hero/hero-1.webp", "/hero/hero-2.webp", "/hero/hero-3.webp"])
                 )
                 db.add(hero)
                 db.commit()
@@ -79,7 +81,8 @@ def create_hero_template(data: HeroTemplateCreate, db: Session = Depends(get_db)
         titulo_linea_2=data.titulo_linea_2.strip(),
         subtitulo=data.subtitulo.strip(),
         boton_texto=data.boton_texto.strip() if data.boton_texto else "Ver Colección",
-        es_predeterminada=should_be_default
+        es_predeterminada=should_be_default,
+        imagenes_fondo=json.dumps(data.imagenes_fondo) if data.imagenes_fondo else None
     )
     db.add(plantilla)
     db.commit()
@@ -109,6 +112,8 @@ def update_hero_template(id: UUID, data: HeroTemplateUpdate, db: Session = Depen
         plantilla.subtitulo = data.subtitulo.strip()
     if data.boton_texto is not None:
         plantilla.boton_texto = data.boton_texto.strip()
+    if data.imagenes_fondo is not None:
+        plantilla.imagenes_fondo = json.dumps(data.imagenes_fondo)
 
     db.commit()
     db.refresh(plantilla)

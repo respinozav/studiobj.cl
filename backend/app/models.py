@@ -132,6 +132,7 @@ class HeroTemplate(Base):
     titulo_linea_2 = Column(String(150), nullable=False, default="Elegancia Exclusiva")
     subtitulo = Column(Text, nullable=False, default="Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.")
     boton_texto = Column(String(60), nullable=False, default="Ver Colección")
+    imagenes_fondo = Column(Text, nullable=True)  # JSON serializado con hasta 3 imágenes de fondo
     es_predeterminada = Column(Boolean, nullable=False, default=False, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))

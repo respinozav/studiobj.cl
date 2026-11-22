@@ -30,7 +30,9 @@ import {
   Sparkles,
   Copy,
   Save,
-  ZoomIn
+  ZoomIn,
+  ImagePlus,
+  ArrowDown
 } from 'lucide-react';
 import { Lightbox } from '../components/Lightbox';
 import { useLoading } from '../context/LoadingContext';
@@ -340,14 +342,16 @@ export const AdminPanel: React.FC = () => {
     titulo_linea_2: string;
     subtitulo: string;
     boton_texto: string;
+    imagenes_fondo: string[];
     es_predeterminada: boolean;
   }>({
     nombre: 'Campaña Dark Luxury 2026',
     tag: 'Edición Dark Luxury 2026',
-    titulo_linea_1: 'Esculpe Tu Fuerza Con',
-    titulo_linea_2: 'Elegancia Exclusiva',
-    subtitulo: 'Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.',
+    titulo_linea_1: 'Moldea tu silueta.',
+    titulo_linea_2: 'Entrena sin límites.',
+    subtitulo: 'Activewear seamless de compresión inteligente y cero transparencia. Pide directo por WhatsApp con despacho rápido a todo Chile.',
     boton_texto: 'Ver Colección',
+    imagenes_fondo: ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp'],
     es_predeterminada: true,
   });
 
@@ -698,6 +702,10 @@ export const AdminPanel: React.FC = () => {
                 titulo_linea_2: active.titulo_linea_2,
                 subtitulo: active.subtitulo,
                 boton_texto: active.boton_texto,
+                imagenes_fondo:
+                  active.imagenes_fondo && active.imagenes_fondo.length > 0
+                    ? active.imagenes_fondo
+                    : ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp'],
                 es_predeterminada: active.es_predeterminada,
               });
             }
@@ -749,6 +757,10 @@ export const AdminPanel: React.FC = () => {
               titulo_linea_2: active.titulo_linea_2,
               subtitulo: active.subtitulo,
               boton_texto: active.boton_texto,
+              imagenes_fondo:
+                active.imagenes_fondo && active.imagenes_fondo.length > 0
+                  ? active.imagenes_fondo
+                  : ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp'],
               es_predeterminada: active.es_predeterminada,
             });
           }
@@ -790,6 +802,7 @@ export const AdminPanel: React.FC = () => {
               titulo_linea_2: heroForm.titulo_linea_2,
               subtitulo: heroForm.subtitulo,
               boton_texto: heroForm.boton_texto,
+              imagenes_fondo: heroForm.imagenes_fondo,
             });
             if (activateImmediately && !updated.es_predeterminada) {
               const activated = await api.activateHeroPlantilla(updated.id);
@@ -816,6 +829,7 @@ export const AdminPanel: React.FC = () => {
               titulo_linea_2: heroForm.titulo_linea_2,
               subtitulo: heroForm.subtitulo,
               boton_texto: heroForm.boton_texto,
+              imagenes_fondo: heroForm.imagenes_fondo,
               es_predeterminada: activateImmediately,
             });
             setSelectedHeroId(created.id);
@@ -889,6 +903,10 @@ export const AdminPanel: React.FC = () => {
       titulo_linea_2: tpl.titulo_linea_2,
       subtitulo: tpl.subtitulo,
       boton_texto: tpl.boton_texto,
+      imagenes_fondo:
+        tpl.imagenes_fondo && tpl.imagenes_fondo.length > 0
+          ? tpl.imagenes_fondo
+          : ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp'],
       es_predeterminada: tpl.es_predeterminada,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -903,6 +921,10 @@ export const AdminPanel: React.FC = () => {
       titulo_linea_2: tpl.titulo_linea_2,
       subtitulo: tpl.subtitulo,
       boton_texto: tpl.boton_texto,
+      imagenes_fondo:
+        tpl.imagenes_fondo && tpl.imagenes_fondo.length > 0
+          ? [...tpl.imagenes_fondo]
+          : ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp'],
       es_predeterminada: false,
     });
     setMessage({ type: 'success', text: 'Plantilla duplicada. Edita el nombre y guarda para agregarla a la biblioteca.' });
@@ -914,13 +936,55 @@ export const AdminPanel: React.FC = () => {
     setHeroForm({
       nombre: 'Nueva Portada',
       tag: 'Edición Dark Luxury 2026',
-      titulo_linea_1: 'Esculpe Tu Fuerza Con',
-      titulo_linea_2: 'Elegancia Exclusiva',
-      subtitulo: 'Prendas deportivas de compresión premium, tejidos transpirables y diseño sofisticado pensado para la mujer moderna en Chile.',
+      titulo_linea_1: 'Moldea tu silueta.',
+      titulo_linea_2: 'Entrena sin límites.',
+      subtitulo: 'Activewear seamless de compresión inteligente y cero transparencia. Pide directo por WhatsApp con despacho rápido a todo Chile.',
       boton_texto: 'Ver Colección',
+      imagenes_fondo: ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp'],
       es_predeterminada: false,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Subir imagen para la portada / hero (máximo 3) con compresión en Canvas
+  const handleHeroImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if ((heroForm.imagenes_fondo || []).length >= 3) {
+      alert('Solo se permite un máximo de 3 imágenes de fondo para la portada.');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxW = 1280;
+        const scale = Math.min(1, maxW / img.width);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const base64 = canvas.toDataURL('image/jpeg', 0.85);
+          setHeroForm((prev) => ({
+            ...prev,
+            imagenes_fondo: [...(prev.imagenes_fondo || []), base64].slice(0, 3),
+          }));
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRemoveHeroImage = (idxToRemove: number) => {
+    setHeroForm((prev) => ({
+      ...prev,
+      imagenes_fondo: (prev.imagenes_fondo || []).filter((_, i) => i !== idxToRemove),
+    }));
   };
 
   // --- COMPRESOR DE IMAGEN EN NAVEGADOR VIA HTML5 CANVAS ---
@@ -2757,37 +2821,70 @@ export const AdminPanel: React.FC = () => {
                       />
                     </div>
 
-                    {/* 1.5. Logo informativo (Siempre fijo) */}
-                    <div className="p-3 rounded-xl bg-[#1C0F18]/80 border border-[#D9A6B8]/15 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="/logo-128.png"
-                          alt="Logo StudioBJ"
-                          className="w-10 h-10 object-contain rounded-full border border-[#D9A6B8]/40 shadow-sm"
-                        />
-                        <div>
-                          <p className="text-xs font-semibold text-white">Logotipo Oficial StudioBJ</p>
-                          <p className="text-[10px] text-gray-400">Siempre fijo en la parte superior del banner</p>
-                        </div>
+                    {/* 2. Gestor de Imágenes de Fondo (Hasta 3 imágenes) */}
+                    <div className="p-3.5 rounded-xl bg-[#1C0F18]/80 border border-[#D9A6B8]/20 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-gray-200 flex items-center gap-1.5">
+                          <ImagePlus className="w-3.5 h-3.5 text-[#D9A6B8]" />
+                          <span>Imágenes de Fondo Cinemáticas</span>
+                        </label>
+                        <span className="text-[11px] font-semibold text-[#D9A6B8] bg-[#311B2B] px-2.5 py-0.5 rounded-full border border-[#D9A6B8]/30">
+                          {(heroForm.imagenes_fondo || []).length} / 3 imágenes
+                        </span>
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#311B2B] text-[#D9A6B8] font-bold uppercase tracking-wider">
-                        Fijo
-                      </span>
-                    </div>
+                      <p className="text-[11px] text-gray-400 leading-relaxed">
+                        Sube hasta 3 fotografías. Se aplica tratamiento Dark Luxury automático (color vino profundo y degradado de transparencia) para no competir con el texto.
+                      </p>
 
-                    {/* 2. TAG / Badge de Temporada */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-300 mb-1">
-                        Badge Superior / TAG *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={heroForm.tag}
-                        onChange={(e) => setHeroForm({ ...heroForm, tag: e.target.value })}
-                        placeholder="Ej: Edición Dark Luxury 2026"
-                        className="w-full px-3 py-2 rounded-lg bg-[#1C0F18] border border-[#D9A6B8]/30 text-white text-xs placeholder-gray-500 focus:outline-none focus:border-[#D9A6B8] transition-colors"
-                      />
+                      {/* Grilla de Miniaturas */}
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {(heroForm.imagenes_fondo || []).map((imgUrl, i) => (
+                          <div
+                            key={i}
+                            className="relative aspect-[3/4] rounded-xl overflow-hidden border border-[#D9A6B8]/40 bg-[#1C0F18] group shadow-md"
+                          >
+                            <img
+                              src={imgUrl}
+                              alt={`Hero ${i + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {/* Tratamiento visual Dark Luxury */}
+                            <div className="absolute inset-0 bg-[#1C0F18]/45 mix-blend-multiply pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-[#1C0F18] via-transparent to-transparent pointer-events-none" />
+
+                            {/* Badge # */}
+                            <span className="absolute top-1.5 left-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/75 text-[#D9A6B8] backdrop-blur-sm">
+                              #{i + 1}
+                            </span>
+
+                            {/* Botón Eliminar */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveHeroImage(i)}
+                              title="Eliminar foto"
+                              className="absolute top-1.5 right-1.5 p-1 rounded-full bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 transition-opacity shadow-sm"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Botón para Subir Nueva Imagen (si hay menos de 3) */}
+                        {(heroForm.imagenes_fondo || []).length < 3 && (
+                          <label className="relative aspect-[3/4] rounded-xl border-2 border-dashed border-[#D9A6B8]/40 hover:border-[#D9A6B8] bg-[#1C0F18]/60 hover:bg-[#1C0F18] flex flex-col items-center justify-center p-2.5 cursor-pointer transition-all group">
+                            <Upload className="w-5 h-5 text-[#D9A6B8] group-hover:scale-110 transition-transform mb-1.5" />
+                            <span className="text-[10px] font-medium text-gray-300 text-center leading-tight">
+                              Subir foto (máx 3)
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleHeroImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
 
                     {/* 3. Título Línea 1 */}
@@ -2886,49 +2983,57 @@ export const AdminPanel: React.FC = () => {
                     </div>
 
                     {/* Marco de Simulación del Hero */}
-                    <div className="relative overflow-hidden rounded-2xl border-2 border-[#D9A6B8]/30 shadow-2xl bg-gradient-to-b from-[#1C0F18] via-[#261521] to-[#1C0F18] p-6 sm:p-10 text-center flex flex-col items-center">
-                      {/* Círculos de luz ambiental */}
-                      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#D9A6B8]/10 rounded-full blur-3xl pointer-events-none" />
-                      <div className="absolute bottom-0 right-0 w-48 h-48 bg-[#311B2B]/40 rounded-full blur-2xl pointer-events-none" />
+                    <div className="relative overflow-hidden rounded-2xl border-2 border-[#D9A6B8]/30 shadow-2xl bg-[#1C0F18] p-6 sm:p-10 min-h-[400px] flex items-center">
+                      {/* Fondo con carrusel ambiental */}
+                      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none">
+                        {(heroForm.imagenes_fondo && heroForm.imagenes_fondo.length > 0
+                          ? heroForm.imagenes_fondo
+                          : ['/hero/hero-1.webp', '/hero/hero-2.webp', '/hero/hero-3.webp']
+                        ).map((src, idx) => (
+                          <div
+                            key={idx}
+                            className={`absolute inset-0 transition-opacity duration-700 ${
+                              idx === 0 ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          >
+                            <img
+                              src={src}
+                              alt="Preview Hero"
+                              className="w-full h-full object-cover object-right"
+                            />
+                          </div>
+                        ))}
 
-                      {/* Logo Oficial Central (Siempre el mismo) */}
-                      <div className="relative mb-3 group">
-                        <div className="absolute -inset-1.5 bg-gradient-to-r from-[#D9A6B8]/40 to-[#311B2B] rounded-full blur-md opacity-70" />
-                        <img
-                          src="/logo-256.png"
-                          srcSet="/logo-128.png 1x, /logo-256.png 2x, /logo.png 3x"
-                          alt="StudioBJ Logo"
-                          className="relative w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-full border border-[#D9A6B8]/60 shadow-[0_0_20px_rgba(217,166,184,0.35)]"
-                        />
+                        {/* Tratamiento Dark Luxury */}
+                        <div className="absolute inset-0 bg-[#1C0F18]/45 mix-blend-multiply" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#1C0F18] via-[#1C0F18]/92 via-45% to-transparent" />
+                        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#1C0F18] to-transparent" />
                       </div>
 
-                      {/* Badge / TAG */}
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#311B2B]/90 border border-[#D9A6B8]/40 text-[11px] text-[#D9A6B8] font-semibold tracking-wider uppercase mb-3 shadow-sm">
-                        <Sparkles className="w-3 h-3 text-[#D9A6B8]" />
-                        <span>{heroForm.tag || 'Edición Dark Luxury 2026'}</span>
+                      {/* Contenido alineado a la izquierda */}
+                      <div className="relative z-10 max-w-sm text-left flex flex-col items-start">
+                        {/* Título Principal */}
+                        <h2 className="font-editorial text-2xl sm:text-3xl font-light text-white leading-tight tracking-tight mb-2 drop-shadow-md">
+                          {heroForm.titulo_linea_1 || 'Moldea tu silueta.'}
+                          <span className="italic font-normal text-[#D9A6B8] block mt-1">
+                            {heroForm.titulo_linea_2 || 'Entrena sin límites.'}
+                          </span>
+                        </h2>
+
+                        {/* Subtítulo */}
+                        <p className="text-xs text-gray-300 font-normal leading-relaxed mb-5 drop-shadow-sm line-clamp-3">
+                          {heroForm.subtitulo || 'Activewear seamless de compresión inteligente...'}
+                        </p>
+
+                        {/* Botón CTA */}
+                        <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-[#1C0F18] font-bold text-xs uppercase tracking-wider shadow-lg">
+                          <span>{heroForm.boton_texto || 'Ver Colección'}</span>
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </div>
                       </div>
 
-                      {/* Título Principal */}
-                      <h2 className="font-editorial text-3xl sm:text-4xl lg:text-5xl font-light text-white leading-tight tracking-tight mb-2">
-                        {heroForm.titulo_linea_1 || 'Esculpe Tu Fuerza Con'} <br />
-                        <span className="italic font-normal text-[#D9A6B8]">
-                          {heroForm.titulo_linea_2 || 'Elegancia Exclusiva'}
-                        </span>
-                      </h2>
-
-                      {/* Subtítulo */}
-                      <p className="text-xs sm:text-sm text-gray-300 max-w-md font-normal leading-relaxed mb-5">
-                        {heroForm.subtitulo || 'Prendas deportivas de compresión premium...'}
-                      </p>
-
-                      {/* Botón CTA */}
-                      <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-[#D9A6B8] to-[#E6BAC8] text-[#1C0F18] font-bold text-xs uppercase tracking-wider shadow-md">
-                        <span>{heroForm.boton_texto || 'Ver Colección'}</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </div>
-
-                      <div className="mt-5 text-[10px] text-gray-400 bg-black/30 px-3 py-1 rounded-full border border-white/5">
-                        Visualizando plantilla: <span className="text-[#D9A6B8] font-semibold">{heroForm.nombre}</span>
+                      <div className="absolute bottom-2.5 right-3 text-[10px] text-gray-400 bg-black/60 px-3 py-1 rounded-full border border-white/5 backdrop-blur-sm z-20">
+                        Visualizando: <span className="text-[#D9A6B8] font-semibold">{heroForm.nombre}</span>
                       </div>
                     </div>
                   </div>

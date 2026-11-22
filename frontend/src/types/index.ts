@@ -99,6 +99,7 @@ export interface HeroTemplate {
   titulo_linea_2: string;
   subtitulo: string;
   boton_texto: string;
+  imagenes_fondo?: string[];
   es_predeterminada: boolean;
   created_at?: string;
   updated_at?: string;
