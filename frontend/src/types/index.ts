@@ -22,6 +22,7 @@ export interface ProductoVariante {
   color_hex?: string | null;
   imagenes: string[];
   tallas: string; // ej: "XS,S,M,L,XL"
+  activo?: boolean;
 }
 
 export interface Producto {

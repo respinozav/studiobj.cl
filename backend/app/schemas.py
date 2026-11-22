@@ -132,6 +132,7 @@ class ProductoVarianteSchema(BaseModel):
     color_hex: Optional[str] = None
     imagenes: List[str] = Field(default_factory=list)
     tallas: str = Field(..., max_length=60) # Ej: 'XS,S,M,L,XL'
+    activo: Optional[bool] = True
 
 class ProductoBase(BaseModel):
     categoria_id: UUID

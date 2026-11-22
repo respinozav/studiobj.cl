@@ -53,11 +53,13 @@ export interface ProductVariantItem {
   tallas: string[];
   imagen_url: string;
   fotosCount: number;
+  activo: boolean;
+  variantIndex: number;
 }
 
 export const getProductAllVariants = (p: Producto): ProductVariantItem[] => {
   if (p.variantes && Array.isArray(p.variantes) && p.variantes.length > 0) {
-    return p.variantes.map((v) => {
+    return p.variantes.map((v, idx) => {
       const imgUrl = (v.imagenes && v.imagenes.length > 0) ? v.imagenes[0] : (p.imagen_base64 || '');
       return {
         color: v.color || p.color || 'Único',
@@ -67,17 +69,21 @@ export const getProductAllVariants = (p: Producto): ProductVariantItem[] => {
           : (p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA']),
         imagen_url: imgUrl,
         fotosCount: (v.imagenes || []).length || (p.imagen_base64 ? 1 : 0),
+        activo: v.activo !== false,
+        variantIndex: idx,
       };
     });
   }
   const colorParts = p.color ? p.color.split(/[/,]/).map((s) => s.trim()).filter(Boolean) : ['Único'];
   const tallasArr = p.talla ? p.talla.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean) : ['ÚNICA'];
-  return colorParts.map((c) => ({
+  return colorParts.map((c, idx) => ({
     color: c,
     color_hex: getColorHex(c),
     tallas: tallasArr,
     imagen_url: p.imagen_base64 || '',
     fotosCount: p.imagen_base64 ? 1 : 0,
+    activo: true,
+    variantIndex: idx,
   }));
 };
 
@@ -328,6 +334,227 @@ export const AdminPanel: React.FC = () => {
     } finally {
       setSavingNewColor(false);
     }
+  };
+
+  // --- GESTIÓN INDIVIDUAL DE VARIANTES DE COLOR DENTRO DE LA CORTINA ---
+  const [editVariantModal, setEditVariantModal] = useState<{
+    product: Producto;
+    variantIndex: number;
+    color: string;
+    color_hex: string;
+    tallas: string;
+    imagenes: string[];
+    activo: boolean;
+  } | null>(null);
+  const [savingEditVariant, setSavingEditVariant] = useState(false);
+
+  const openEditVariantModal = (product: Producto, variantIndex: number) => {
+    const vars: ProductoVariante[] =
+      product.variantes && product.variantes.length > 0
+        ? [...product.variantes]
+        : [
+            {
+              color: product.color,
+              color_hex: getColorHex(product.color),
+              imagenes: [product.imagen_base64],
+              tallas: product.talla,
+              activo: true,
+            },
+          ];
+    const target = vars[variantIndex] || vars[0];
+    setEditVariantModal({
+      product,
+      variantIndex,
+      color: target.color,
+      color_hex: target.color_hex || getColorHex(target.color),
+      tallas: target.tallas || 'S,M,L',
+      imagenes: target.imagenes && target.imagenes.length > 0 ? [...target.imagenes] : (product.imagen_base64 ? [product.imagen_base64] : []),
+      activo: target.activo !== false,
+    });
+  };
+
+  const handleSaveEditVariant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editVariantModal) return;
+    if (!editVariantModal.color.trim()) {
+      alert('Debes ingresar el nombre del color');
+      return;
+    }
+    if (editVariantModal.imagenes.length === 0) {
+      alert('Debes subir al menos una imagen para esta variante');
+      return;
+    }
+    try {
+      setSavingEditVariant(true);
+      const product = editVariantModal.product;
+      const vars: ProductoVariante[] =
+        product.variantes && product.variantes.length > 0
+          ? [...product.variantes]
+          : [
+              {
+                color: product.color,
+                color_hex: getColorHex(product.color),
+                imagenes: [product.imagen_base64],
+                tallas: product.talla,
+                activo: true,
+              },
+            ];
+
+      vars[editVariantModal.variantIndex] = {
+        color: editVariantModal.color.trim(),
+        color_hex: editVariantModal.color_hex || getColorHex(editVariantModal.color.trim()),
+        imagenes: editVariantModal.imagenes,
+        tallas: editVariantModal.tallas,
+        activo: editVariantModal.activo,
+      };
+
+      await withLoading(
+        api.updateProducto(product.id, {
+          variantes: vars,
+        }),
+        'Loading...'
+      );
+
+      setMessage({
+        type: 'success',
+        text: `Variante "${editVariantModal.color}" actualizada con éxito en ${product.nombre}`,
+      });
+      setEditVariantModal(null);
+      loadData();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Error al actualizar la variante' });
+    } finally {
+      setSavingEditVariant(false);
+    }
+  };
+
+  const handleToggleVariantEstado = async (product: Producto, variantIndex: number) => {
+    try {
+      const vars: ProductoVariante[] =
+        product.variantes && product.variantes.length > 0
+          ? [...product.variantes]
+          : [
+              {
+                color: product.color,
+                color_hex: getColorHex(product.color),
+                imagenes: [product.imagen_base64],
+                tallas: product.talla,
+                activo: true,
+              },
+            ];
+
+      if (!vars[variantIndex]) return;
+      const currentActive = vars[variantIndex].activo !== false;
+      vars[variantIndex] = {
+        ...vars[variantIndex],
+        activo: !currentActive,
+      };
+
+      await withLoading(
+        api.updateProducto(product.id, {
+          variantes: vars,
+        }),
+        'Loading...'
+      );
+
+      setMessage({
+        type: 'success',
+        text: `Variante "${vars[variantIndex].color}" ${!currentActive ? 'activada' : 'deshabilitada'} con éxito`,
+      });
+      loadData();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Error al cambiar estado de variante' });
+    }
+  };
+
+  const handleDeleteVariant = async (product: Producto, variantIndex: number) => {
+    const vars: ProductoVariante[] =
+      product.variantes && product.variantes.length > 0
+        ? [...product.variantes]
+        : [];
+
+    if (vars.length <= 1) {
+      alert('Un producto debe tener al menos una variante de color.');
+      return;
+    }
+
+    const varName = vars[variantIndex]?.color || 'esta variante';
+    if (!window.confirm(`¿Estás seguro de eliminar la variante "${varName}" de ${product.nombre}?`)) {
+      return;
+    }
+
+    try {
+      const updatedVars = vars.filter((_, idx) => idx !== variantIndex);
+      await withLoading(
+        api.updateProducto(product.id, {
+          variantes: updatedVars,
+        }),
+        'Loading...'
+      );
+
+      setMessage({
+        type: 'success',
+        text: `Variante "${varName}" eliminada con éxito`,
+      });
+      loadData();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Error al eliminar variante' });
+    }
+  };
+
+  const toggleEditVariantTalla = (talla: string) => {
+    if (!editVariantModal) return;
+    if (talla === 'ÚNICA') {
+      setEditVariantModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              tallas: prev.tallas.includes('ÚNICA') ? 'S,M,L' : 'ÚNICA',
+            }
+          : null
+      );
+      return;
+    }
+    const current = editVariantModal.tallas
+      ? editVariantModal.tallas.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+      : [];
+    const withoutUnica = current.filter((s) => s !== 'ÚNICA');
+    const next = withoutUnica.includes(talla)
+      ? withoutUnica.filter((s) => s !== talla)
+      : [...withoutUnica, talla];
+    setEditVariantModal((prev) =>
+      prev ? { ...prev, tallas: next.length > 0 ? next.join(',') : 'S' } : null
+    );
+  };
+
+  const handleEditVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editVariantModal) return;
+    try {
+      const base64 = await compressImageFile(file);
+      setEditVariantModal((prev) =>
+        prev
+          ? {
+              ...prev,
+              imagenes: [base64, ...prev.imagenes.slice(0, 4)],
+            }
+          : null
+      );
+    } catch (err) {
+      console.error('Error al comprimir foto:', err);
+    }
+  };
+
+  const removeEditVariantImage = (imgIdx: number) => {
+    if (!editVariantModal) return;
+    setEditVariantModal((prev) =>
+      prev
+        ? {
+            ...prev,
+            imagenes: prev.imagenes.filter((_, i) => i !== imgIdx),
+          }
+        : null
+    );
   };
 
   // Estados para Módulo Portada / Hero
@@ -660,7 +887,7 @@ export const AdminPanel: React.FC = () => {
 
   // Bloquear scroll de la página completa cuando un modal o visor está abierto y restaurar limpiamente
   useEffect(() => {
-    if (isModalOpen || lightboxProduct || isSidebarOpen || newColorModalProduct) {
+    if (isModalOpen || lightboxProduct || isSidebarOpen || newColorModalProduct || editVariantModal) {
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
       return () => {
@@ -669,7 +896,7 @@ export const AdminPanel: React.FC = () => {
         document.body.style.removeProperty('touch-action');
       };
     }
-  }, [isModalOpen, lightboxProduct, isSidebarOpen, newColorModalProduct]);
+  }, [isModalOpen, lightboxProduct, isSidebarOpen, newColorModalProduct, editVariantModal]);
 
   // Carga de datos según pestaña
   const loadData = async () => {
@@ -1940,53 +2167,106 @@ export const AdminPanel: React.FC = () => {
                               <div className="divide-y divide-[#D9A6B8]/15 space-y-3">
                                 {getProductAllVariants(p).map((v, vIdx) => {
                                   return (
-                                    <div key={vIdx} className="pt-3 first:pt-0 flex items-start gap-3">
-                                      {/* 1. Imagen del color */}
-                                      <div
-                                        onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
-                                        className="relative cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
-                                        title="Tocar para ampliar foto"
-                                      >
-                                        <img
-                                          src={v.imagen_url}
-                                          alt={`${p.nombre} - ${v.color}`}
-                                          className="w-14 h-18 object-cover rounded-lg bg-[#261521] border border-[#D9A6B8]/30 shadow-md"
-                                        />
-                                        <div className="absolute bottom-1 right-1 bg-black/80 text-[#D9A6B8] p-0.5 rounded border border-[#D9A6B8]/30">
-                                          <ZoomIn className="w-2.5 h-2.5" />
+                                    <div key={vIdx} className="pt-3 first:pt-0 space-y-2">
+                                      <div className="flex items-start gap-3">
+                                        {/* 1. Imagen del color */}
+                                        <div
+                                          onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
+                                          className="relative cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
+                                          title="Tocar para ampliar foto"
+                                        >
+                                          <img
+                                            src={v.imagen_url}
+                                            alt={`${p.nombre} - ${v.color}`}
+                                            className="w-14 h-18 object-cover rounded-lg bg-[#261521] border border-[#D9A6B8]/30 shadow-md"
+                                          />
+                                          <div className="absolute bottom-1 right-1 bg-black/80 text-[#D9A6B8] p-0.5 rounded border border-[#D9A6B8]/30">
+                                            <ZoomIn className="w-2.5 h-2.5" />
+                                          </div>
+                                        </div>
+
+                                        {/* 2. Color de la imagen + Estado + 3. Tallas */}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center justify-between gap-1 mb-1.5">
+                                            <div
+                                              onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
+                                              className="flex items-center gap-2 cursor-pointer truncate"
+                                            >
+                                              <span
+                                                className="w-3.5 h-3.5 rounded-full border border-white/60 shadow-sm flex-shrink-0"
+                                                style={{ backgroundColor: v.color_hex }}
+                                              />
+                                              <span className="font-semibold text-white text-xs truncate">
+                                                {v.color}
+                                              </span>
+                                            </div>
+
+                                            <span
+                                              className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider flex-shrink-0 ${
+                                                v.activo
+                                                  ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30'
+                                                  : 'bg-rose-950/80 text-rose-400 border border-rose-500/30'
+                                              }`}
+                                            >
+                                              {v.activo ? 'Activa' : 'Deshabilitada'}
+                                            </span>
+                                          </div>
+
+                                          <div className="space-y-1">
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
+                                              Tallas:
+                                            </span>
+                                            <div className="flex flex-wrap gap-1">
+                                              {v.tallas.map((t, tIdx) => (
+                                                <span
+                                                  key={tIdx}
+                                                  className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[9px] font-bold text-[#D9A6B8]"
+                                                >
+                                                  {t}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
                                         </div>
                                       </div>
 
-                                      {/* 2. Color de la imagen + 3. Tallas */}
-                                      <div className="flex-1 min-w-0">
-                                        <div
-                                          onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
-                                          className="flex items-center gap-2 cursor-pointer mb-1.5"
-                                        >
-                                          <span
-                                            className="w-3.5 h-3.5 rounded-full border border-white/60 shadow-sm flex-shrink-0"
-                                            style={{ backgroundColor: v.color_hex }}
-                                          />
-                                          <span className="font-semibold text-white text-xs truncate">
-                                            {v.color}
-                                          </span>
+                                      {/* Acciones de la variante móvil */}
+                                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#D9A6B8]/10">
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => openEditVariantModal(p, v.variantIndex)}
+                                            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-[#D9A6B8] text-[10px] font-semibold border border-[#D9A6B8]/30 transition-colors"
+                                            title="Editar color, tallas o foto"
+                                          >
+                                            <Edit2 className="w-3 h-3" />
+                                            <span>Editar</span>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleToggleVariantEstado(p, v.variantIndex)}
+                                            className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-semibold border transition-colors ${
+                                              v.activo
+                                                ? 'bg-[#1C0F18] border-rose-500/30 text-rose-300 hover:bg-rose-950/60'
+                                                : 'bg-[#1C0F18] border-emerald-500/30 text-emerald-300 hover:bg-emerald-950/60'
+                                            }`}
+                                            title={v.activo ? 'Deshabilitar este color' : 'Activar este color'}
+                                          >
+                                            {v.activo ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                            <span>{v.activo ? 'Deshabilitar' : 'Activar'}</span>
+                                          </button>
                                         </div>
 
-                                        <div className="space-y-1">
-                                          <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">
-                                            Tallas:
-                                          </span>
-                                          <div className="flex flex-wrap gap-1">
-                                            {v.tallas.map((t, tIdx) => (
-                                              <span
-                                                key={tIdx}
-                                                className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#261521] border border-[#D9A6B8]/30 text-[9px] font-bold text-[#D9A6B8]"
-                                              >
-                                                {t}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
+                                        {getProductAllVariants(p).length > 1 && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteVariant(p, v.variantIndex)}
+                                            className="p-1 rounded-md text-gray-400 hover:text-rose-400 hover:bg-rose-950/50 transition-colors"
+                                            title="Eliminar esta variante"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   );
@@ -2201,7 +2481,7 @@ export const AdminPanel: React.FC = () => {
                                               {/* 2. Color de la imagen (Punto y Nombre) */}
                                               <div
                                                 onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
-                                                className="flex items-center gap-3 cursor-pointer group/col flex-1 min-w-[200px]"
+                                                className="flex items-center gap-3 cursor-pointer group/col flex-1 min-w-[180px]"
                                                 title={`Pinchar para ver foto de ${v.color}`}
                                               >
                                                 <span
@@ -2217,7 +2497,7 @@ export const AdminPanel: React.FC = () => {
                                               </div>
 
                                               {/* 3. Tallas de este color */}
-                                              <div className="flex-1 min-w-[220px]">
+                                              <div className="flex-1 min-w-[200px]">
                                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5">
                                                   Tallas disponibles:
                                                 </span>
@@ -2232,6 +2512,54 @@ export const AdminPanel: React.FC = () => {
                                                     </span>
                                                   ))}
                                                 </div>
+                                              </div>
+
+                                              {/* 4. Estado de la Variante */}
+                                              <div className="flex-shrink-0">
+                                                <span
+                                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                                    v.activo
+                                                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-500/30'
+                                                      : 'bg-rose-950 text-rose-400 border border-rose-500/30'
+                                                  }`}
+                                                >
+                                                  {v.activo ? 'Activa' : 'Deshabilitada'}
+                                                </span>
+                                              </div>
+
+                                              {/* 5. Acciones de la Variante */}
+                                              <div className="flex items-center gap-2 flex-shrink-0">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => openEditVariantModal(p, v.variantIndex)}
+                                                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-white text-xs font-semibold border border-[#D9A6B8]/30 transition-all shadow-sm active:scale-95"
+                                                  title={`Editar color, fotos o tallas de ${v.color}`}
+                                                >
+                                                  <Edit2 className="w-3.5 h-3.5" />
+                                                  <span>Editar</span>
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleToggleVariantEstado(p, v.variantIndex)}
+                                                  className={`p-1.5 rounded-lg border transition-colors ${
+                                                    v.activo
+                                                      ? 'text-emerald-400 hover:text-rose-400 hover:bg-rose-950/60 border-emerald-500/30'
+                                                      : 'text-gray-400 hover:text-emerald-400 hover:bg-emerald-950/60 border-rose-500/30'
+                                                  }`}
+                                                  title={v.activo ? `Deshabilitar color ${v.color}` : `Activar color ${v.color}`}
+                                                >
+                                                  {v.activo ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                                </button>
+                                                {getProductAllVariants(p).length > 1 && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteVariant(p, v.variantIndex)}
+                                                    className="p-1.5 rounded-lg text-gray-400 hover:text-rose-400 hover:bg-rose-950/60 border border-white/5 transition-colors"
+                                                    title={`Eliminar color ${v.color}`}
+                                                  >
+                                                    <Trash2 className="w-4 h-4" />
+                                                  </button>
+                                                )}
                                               </div>
                                             </div>
                                           );
@@ -4158,6 +4486,235 @@ export const AdminPanel: React.FC = () => {
                       <span>Guardar Nuevo Color</span>
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dedicado para Editar Variante de Color Individual desde la Cortina */}
+      {editVariantModal && (
+        <div className="fixed inset-0 z-50 overflow-hidden bg-black/85 backdrop-blur-md p-3 sm:p-6 md:p-8 flex justify-center items-center">
+          <div className="relative w-full max-w-xl glass-card rounded-2xl border border-[#D9A6B8]/30 bg-[#261521] shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fadeIn">
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#D9A6B8]/20 bg-[#261521] z-10 flex-shrink-0">
+              <div>
+                <span className="text-[10px] text-[#D9A6B8] uppercase tracking-wider font-bold block">
+                  Edición de Variante de Color
+                </span>
+                <h3 className="font-editorial text-lg sm:text-xl font-bold text-white truncate max-w-sm sm:max-w-md">
+                  Editar {editVariantModal.color} — {editVariantModal.product.nombre}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditVariantModal(null)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-[#311B2B] transition-colors"
+                title="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleSaveEditVariant} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* 1. Selector de Color y Nombre */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
+                <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                  1. Color de la Prenda *
+                </label>
+
+                {/* Paleta rápida de colores estándar */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-gray-400 font-semibold">Colores de marca:</span>
+                  {(colores.filter((c) => c.activo).length > 0 ? colores.filter((c) => c.activo) : LUXURY_PALETTE).map((pal) => (
+                    <button
+                      key={pal.nombre}
+                      type="button"
+                      onClick={() => setEditVariantModal((prev) => prev ? { ...prev, color: pal.nombre, color_hex: pal.hex } : null)}
+                      className={`w-5 h-5 rounded-full border transition-transform ${
+                        editVariantModal.color.toLowerCase() === pal.nombre.toLowerCase()
+                          ? 'border-white scale-125 ring-2 ring-[#D9A6B8]'
+                          : 'border-white/30 hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: pal.hex }}
+                      title={`${pal.nombre} (${pal.hex})`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-lg border border-white/40 flex-shrink-0 shadow-inner"
+                    style={{ backgroundColor: editVariantModal.color_hex }}
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={editVariantModal.color}
+                    onChange={(e) => setEditVariantModal((prev) => prev ? { ...prev, color: e.target.value } : null)}
+                    placeholder="Escribe el nombre del color (ej: Vino Tinto, Negro Onix...)"
+                    className="flex-1 p-2 rounded bg-[#261521] border border-[#D9A6B8]/30 text-white text-xs focus:outline-none focus:border-[#D9A6B8]"
+                  />
+                  <input
+                    type="color"
+                    value={editVariantModal.color_hex}
+                    onChange={(e) => setEditVariantModal((prev) => prev ? { ...prev, color_hex: e.target.value } : null)}
+                    className="w-8 h-8 p-0 rounded border border-[#D9A6B8]/30 bg-transparent cursor-pointer flex-shrink-0"
+                    title="Ajustar tono hex"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Tallas Disponibles para este Color */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                    2. Tallas Disponibles *
+                  </label>
+                  <span className="text-[10px] text-gray-400">
+                    Seleccionadas: <strong className="text-white">{editVariantModal.tallas || 'Ninguna'}</strong>
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  {/* Opción Única */}
+                  <button
+                    type="button"
+                    onClick={() => toggleEditVariantTalla('ÚNICA')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border text-xs font-bold transition-all ${
+                      editVariantModal.tallas.includes('ÚNICA')
+                        ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] shadow-md ring-1 ring-white/40'
+                        : 'bg-[#261521] text-gray-300 border-white/15 hover:border-[#D9A6B8]/50'
+                    }`}
+                  >
+                    <span>(ÚNICA)</span>
+                  </button>
+
+                  <span className="text-[10px] text-gray-500 text-center font-bold uppercase sm:px-1">o</span>
+
+                  {/* Tallas estándar XS - XL */}
+                  <div className="flex-1 flex items-center gap-1.5">
+                    {STANDARD_SIZES.map((size) => {
+                      const isChecked = !editVariantModal.tallas.includes('ÚNICA') && editVariantModal.tallas.split(',').map((s) => s.trim().toUpperCase()).includes(size);
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleEditVariantTalla(size)}
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                            isChecked
+                              ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] ring-1 ring-white/30'
+                              : 'bg-[#261521] text-gray-400 border-white/10 hover:border-[#D9A6B8]/40 hover:text-white'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() => setEditVariantModal((prev) => prev ? { ...prev, tallas: STANDARD_SIZES.join(',') } : null)}
+                      className="text-[10px] px-2 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-gray-300 font-semibold border border-[#D9A6B8]/30 transition-all flex-shrink-0"
+                    >
+                      (Todas)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Fotografías de la Prenda para este Color */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                    3. Fotografías en {editVariantModal.color} ({editVariantModal.imagenes.length}) *
+                  </label>
+                  <label className="cursor-pointer text-[11px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>+ Subir Foto</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleEditVariantImageUpload}
+                    />
+                  </label>
+                </div>
+
+                {editVariantModal.imagenes.length === 0 ? (
+                  <div className="p-4 text-center rounded-lg border border-dashed border-[#D9A6B8]/30 text-gray-400 text-xs">
+                    No hay fotos para este color. Haz clic en "+ Subir Foto".
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 overflow-x-auto py-1">
+                    {editVariantModal.imagenes.map((img, imgIdx) => (
+                      <div
+                        key={imgIdx}
+                        className="relative group/thumb w-16 h-20 rounded-lg overflow-hidden border border-[#D9A6B8]/30 flex-shrink-0 bg-[#261521]"
+                      >
+                        <img
+                          src={img}
+                          alt={`Foto ${imgIdx + 1} de ${editVariantModal.color}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeEditVariantImage(imgIdx)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                          title="Eliminar foto"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Estado de la Variante (Activa / Deshabilitada) */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-gray-200 font-bold uppercase tracking-wider block">
+                    4. Estado de la Variante
+                  </span>
+                  <span className="text-[11px] text-gray-400">
+                    {editVariantModal.activo
+                      ? 'Visible en la tienda pública'
+                      : 'Oculta temporalmente para clientes'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditVariantModal((prev) => prev ? { ...prev, activo: !prev.activo } : null)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                    editVariantModal.activo
+                      ? 'bg-emerald-950 text-emerald-400 border-emerald-500/40'
+                      : 'bg-rose-950 text-rose-400 border-rose-500/40'
+                  }`}
+                >
+                  {editVariantModal.activo ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  <span>{editVariantModal.activo ? 'Variante Activa' : 'Deshabilitada'}</span>
+                </button>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#D9A6B8]/20">
+                <button
+                  type="button"
+                  onClick={() => setEditVariantModal(null)}
+                  className="px-4 py-2 rounded-lg bg-[#311B2B] text-gray-300 hover:text-white transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEditVariant}
+                  className="px-5 py-2 rounded-lg bg-[#D9A6B8] text-[#1C0F18] font-bold uppercase tracking-wider hover:bg-[#E6BAC8] transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {savingEditVariant && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>Guardar Cambios</span>
                 </button>
               </div>
             </form>

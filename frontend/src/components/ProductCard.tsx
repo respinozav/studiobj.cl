@@ -17,10 +17,14 @@ interface Props {
 export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
   const { addToCart } = useCart();
 
-  // Variantes por color del producto
+  // Variantes por color del producto (solo activas para la tienda pública)
+  const allVariants = producto.variantes && producto.variantes.length > 0 ? producto.variantes : null;
+  const activeVariants = allVariants ? allVariants.filter((v) => v.activo !== false) : [];
   const variantes: ProductoVariante[] =
-    producto.variantes && producto.variantes.length > 0
-      ? producto.variantes
+    activeVariants.length > 0
+      ? activeVariants
+      : allVariants && allVariants.length > 0
+      ? allVariants
       : [
           {
             color: producto.color,
