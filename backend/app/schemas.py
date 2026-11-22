@@ -130,7 +130,7 @@ class ColorResponse(ColorBase):
 class ProductoVarianteSchema(BaseModel):
     color: str = Field(..., max_length=80)
     color_hex: Optional[str] = None
-    imagenes: List[str] = Field(default_factory=list)
+    imagenes: List[str] = Field(default_factory=list, max_length=3)
     tallas: str = Field(..., max_length=60) # Ej: 'XS,S,M,L,XL'
     activo: Optional[bool] = True
 

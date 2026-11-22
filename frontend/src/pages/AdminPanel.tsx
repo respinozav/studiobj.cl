@@ -169,12 +169,14 @@ export const AdminPanel: React.FC = () => {
     color: string;
     color_hex: string;
     tallas: string;
+    imagenes: string[];
     imagen_base64: string;
     imageSizeKB: number | null;
   }>({
     color: '',
     color_hex: '#18181b',
     tallas: 'XS,S,M,L,XL',
+    imagenes: [],
     imagen_base64: '',
     imageSizeKB: null,
   });
@@ -187,6 +189,7 @@ export const AdminPanel: React.FC = () => {
       color: '',
       color_hex: '#18181b',
       tallas: 'XS,S,M,L,XL',
+      imagenes: [],
       imagen_base64: '',
       imageSizeKB: null,
     });
@@ -195,6 +198,11 @@ export const AdminPanel: React.FC = () => {
   const handleNewColorImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (newColorForm.imagenes.length >= 3) {
+      alert('Máximo 3 fotos por color (para variar posturas de la modelo). Si deseas cambiar una foto, elimina una primero.');
+      if (e.target) e.target.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -230,15 +238,32 @@ export const AdminPanel: React.FC = () => {
         const base64Length = webpData.length - (webpData.indexOf(',') + 1);
         const sizeInKB = Math.round((base64Length * 3) / 4 / 1024);
 
-        setNewColorForm((prev) => ({
-          ...prev,
-          imagen_base64: webpData,
-          imageSizeKB: sizeInKB,
-        }));
+        setNewColorForm((prev) => {
+          if (prev.imagenes.length >= 3) return prev;
+          const nextImgs = [...prev.imagenes, webpData].slice(0, 3);
+          return {
+            ...prev,
+            imagenes: nextImgs,
+            imagen_base64: nextImgs[0] || webpData,
+            imageSizeKB: sizeInKB,
+          };
+        });
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    if (e.target) e.target.value = '';
+  };
+
+  const removeNewColorImage = (index: number) => {
+    setNewColorForm((prev) => {
+      const nextImgs = prev.imagenes.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        imagenes: nextImgs,
+        imagen_base64: nextImgs[0] || '',
+      };
+    });
   };
 
   const toggleNewColorTalla = (talla: string) => {
@@ -279,8 +304,14 @@ export const AdminPanel: React.FC = () => {
       alert('Debes ingresar el nombre del nuevo color');
       return;
     }
-    if (!newColorForm.imagen_base64) {
-      alert('Debes subir la fotografía de la prenda para este color');
+    const finalImages = newColorForm.imagenes.length > 0
+      ? newColorForm.imagenes.slice(0, 3)
+      : newColorForm.imagen_base64
+      ? [newColorForm.imagen_base64]
+      : [];
+
+    if (finalImages.length === 0) {
+      alert('Debes subir al menos una fotografía de la prenda para este color (máximo 3)');
       return;
     }
 
@@ -310,8 +341,9 @@ export const AdminPanel: React.FC = () => {
       const newVariant: ProductoVariante = {
         color: newColorForm.color.trim(),
         color_hex: newColorForm.color_hex || getColorHex(newColorForm.color.trim()),
-        imagenes: [newColorForm.imagen_base64],
+        imagenes: finalImages,
         tallas: newColorForm.tallas || 'S,M,L',
+        activo: true,
       };
 
       const updatedVariants = [...currentVars, newVariant];
@@ -530,18 +562,25 @@ export const AdminPanel: React.FC = () => {
   const handleEditVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !editVariantModal) return;
+    if (editVariantModal.imagenes.length >= 3) {
+      alert('Máximo 3 fotos por color (para variar posturas de la modelo). Si deseas cambiar una foto, elimina una primero.');
+      if (e.target) e.target.value = '';
+      return;
+    }
     try {
       const base64 = await compressImageFile(file);
       setEditVariantModal((prev) =>
         prev
           ? {
               ...prev,
-              imagenes: [base64, ...prev.imagenes.slice(0, 4)],
+              imagenes: [...prev.imagenes, base64].slice(0, 3),
             }
           : null
       );
     } catch (err) {
       console.error('Error al comprimir foto:', err);
+    } finally {
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -773,13 +812,18 @@ export const AdminPanel: React.FC = () => {
   };
 
   const addImageToVariant = async (index: number, file: File) => {
+    if (prodForm.variantes[index]?.imagenes.length >= 3) {
+      alert('Máximo 3 fotos por color (para variar posturas de la modelo).');
+      return;
+    }
     try {
       const b64 = await compressImageFile(file);
       setProdForm((prev) => {
         const copy = [...prev.variantes];
+        if (copy[index].imagenes.length >= 3) return prev;
         copy[index] = {
           ...copy[index],
-          imagenes: [...copy[index].imagenes, b64],
+          imagenes: [...copy[index].imagenes, b64].slice(0, 3),
         };
         return {
           ...prev,
@@ -3877,22 +3921,34 @@ export const AdminPanel: React.FC = () => {
                         {/* Imágenes de este color */}
                         <div>
                           <div className="flex items-center justify-between mb-1.5">
-                            <span className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider">
-                              Fotografías en color {v.color} ({v.imagenes.length}):
-                            </span>
-                            <label className="cursor-pointer text-[10px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1">
-                              <Upload className="w-3 h-3" />
-                              <span>+ Subir foto a {v.color}</span>
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) await addImageToVariant(vIdx, file);
-                                }}
-                              />
-                            </label>
+                            <div>
+                              <span className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider block">
+                                Fotografías en color {v.color} ({v.imagenes.length}/3):
+                              </span>
+                              <span className="text-[9px] text-gray-400">
+                                Máximo 3 fotos por color (para variar posturas de la modelo).
+                              </span>
+                            </div>
+                            {v.imagenes.length < 3 ? (
+                              <label className="cursor-pointer text-[10px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1 bg-[#311B2B] px-2 py-0.5 rounded border border-[#D9A6B8]/30">
+                                <Upload className="w-3 h-3" />
+                                <span>+ Subir foto ({v.imagenes.length}/3)</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) await addImageToVariant(vIdx, file);
+                                    e.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            ) : (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/70 border border-amber-500/30 text-amber-300 font-semibold">
+                                Máx. 3 fotos
+                              </span>
+                            )}
                           </div>
 
                           {v.imagenes.length === 0 ? (
@@ -4420,11 +4476,29 @@ export const AdminPanel: React.FC = () => {
                 </div>
               </div>
 
-              {/* 3. Fotografía en este Color */}
+              {/* 3. Fotografías en este Color (Máximo 3) */}
               <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
-                <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
-                  3. Fotografía de la prenda en este color *
-                </label>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                      3. Fotografías en este Color ({newColorForm.imagenes.length}/3) *
+                    </label>
+                    <span className="text-[10px] text-gray-400">
+                      Máximo 3 fotos para variar posturas de la modelo (frontal, lateral, espalda).
+                    </span>
+                  </div>
+
+                  {newColorForm.imagenes.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => newColorFileInputRef.current?.click()}
+                      className="px-2.5 py-1 rounded-md bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center gap-1.5 transition-colors text-xs"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>+ Subir Foto ({newColorForm.imagenes.length}/3)</span>
+                    </button>
+                  )}
+                </div>
 
                 <input
                   type="file"
@@ -4434,34 +4508,34 @@ export const AdminPanel: React.FC = () => {
                   className="hidden"
                 />
 
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => newColorFileInputRef.current?.click()}
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Upload className="w-4 h-4" />
-                    <span>{newColorForm.imagen_base64 ? 'Cambiar Fotografía' : 'Subir Fotografía'}</span>
-                  </button>
-
-                  {newColorForm.imagen_base64 ? (
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={newColorForm.imagen_base64}
-                        alt="Previsualización nuevo color"
-                        className="w-14 h-16 object-cover rounded-lg border border-[#D9A6B8]/40 bg-[#1C0F18]"
-                      />
-                      <div className="text-[11px] text-gray-300">
-                        <span className="text-emerald-400 font-bold block">✓ Comprimida en WebP</span>
-                        {newColorForm.imageSizeKB && <span>Peso optimizado: {newColorForm.imageSizeKB} KB</span>}
+                {newColorForm.imagenes.length === 0 ? (
+                  <div className="p-3 text-center rounded-lg border border-dashed border-[#D9A6B8]/30 text-gray-400 text-xs">
+                    Sube hasta 3 fotos para este color. Haz clic en "+ Subir Foto".
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 overflow-x-auto py-1">
+                    {newColorForm.imagenes.map((img, imgIdx) => (
+                      <div
+                        key={imgIdx}
+                        className="relative group/thumb w-16 h-20 rounded-lg overflow-hidden border border-[#D9A6B8]/30 flex-shrink-0 bg-[#261521]"
+                      >
+                        <img
+                          src={img}
+                          alt={`Foto ${imgIdx + 1} de ${newColorForm.color || 'nuevo'}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeNewColorImage(imgIdx)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                          title="Eliminar foto"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
                       </div>
-                    </div>
-                  ) : (
-                    <span className="text-[11px] text-gray-400">
-                      Sube la fotografía de la prenda en color {newColorForm.color || 'nuevo'}
-                    </span>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Botones de Acción */}
@@ -4628,19 +4702,30 @@ export const AdminPanel: React.FC = () => {
               {/* 3. Fotografías de la Prenda para este Color */}
               <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
-                    3. Fotografías en {editVariantModal.color} ({editVariantModal.imagenes.length}) *
-                  </label>
-                  <label className="cursor-pointer text-[11px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>+ Subir Foto</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleEditVariantImageUpload}
-                    />
-                  </label>
+                  <div>
+                    <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                      3. Fotografías en {editVariantModal.color} ({editVariantModal.imagenes.length}/3) *
+                    </label>
+                    <span className="text-[10px] text-gray-400">
+                      Máximo 3 fotos para variar posturas de la modelo en la prenda.
+                    </span>
+                  </div>
+                  {editVariantModal.imagenes.length < 3 ? (
+                    <label className="cursor-pointer text-[11px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1 bg-[#311B2B] px-2.5 py-1 rounded-md border border-[#D9A6B8]/30">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>+ Subir Foto ({editVariantModal.imagenes.length}/3)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleEditVariantImageUpload}
+                      />
+                    </label>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-amber-950/70 border border-amber-500/30 text-amber-300 font-semibold">
+                      Máx. 3 fotos alcanzado
+                    </span>
+                  )}
                 </div>
 
                 {editVariantModal.imagenes.length === 0 ? (
