@@ -7,16 +7,24 @@ import { Lightbox } from '../components/Lightbox';
 import { CartDrawer } from '../components/CartDrawer';
 import { TrustFeatures } from '../components/TrustFeatures';
 import { Footer } from '../components/Footer';
-import { Categoria, Producto } from '../types';
+import { Categoria, Producto, HeroTemplate } from '../types';
 import { api } from '../services/api';
 import { useLoading } from '../context/LoadingContext';
-import { Loader2 } from 'lucide-react';
+
+const getCachedHero = (): HeroTemplate | null => {
+  try {
+    const raw = localStorage.getItem('studiobj_active_hero');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
 
 export const PublicStore: React.FC = () => {
   const { withLoading } = useLoading();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [allProductos, setAllProductos] = useState<Producto[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [heroData, setHeroData] = useState<HeroTemplate | null>(() => getCachedHero());
   const [selectedCategoriaId, setSelectedCategoriaId] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -27,23 +35,30 @@ export const PublicStore: React.FC = () => {
     initialIndex: number;
   } | null>(null);
 
-  // Cargar Categorías Activas y Todos los Productos en la carga inicial de forma ultra-resiliente
+  // Cargar Hero, Categorías Activas y Todos los Productos en la carga inicial de forma sincronizada
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         await withLoading(
           (async () => {
-            const [catsRes, prodsRes] = await Promise.allSettled([
+            const [catsRes, prodsRes, heroRes] = await Promise.allSettled([
               api.getPublicCategorias(),
               api.getPublicProductos(),
+              api.getPublicHero(),
             ]);
             if (catsRes.status === 'fulfilled') setCategorias(catsRes.value);
             if (prodsRes.status === 'fulfilled') {
               setAllProductos(prodsRes.value);
               setProductos(prodsRes.value);
             }
+            if (heroRes.status === 'fulfilled' && heroRes.value) {
+              setHeroData(heroRes.value);
+              try {
+                localStorage.setItem('studiobj_active_hero', JSON.stringify(heroRes.value));
+              } catch {}
+            }
           })(),
-          'Cargando colección StudioBJ...'
+          'Loading...'
         );
       } catch (e) {
         console.error('Error cargando catálogo inicial', e);
@@ -96,8 +111,8 @@ export const PublicStore: React.FC = () => {
       {/* Header Glassmorphism */}
       <Header />
 
-      {/* Hero Mobile-First */}
-      <Hero />
+      {/* Hero Mobile-First sincronizado con la configuración */}
+      <Hero heroData={heroData} />
 
       {/* Filtros Horizontales Táctiles Sticky debajo del Header */}
       <CategoryFilters
@@ -123,14 +138,9 @@ export const PublicStore: React.FC = () => {
           </span>
         </div>
 
-        {/* Loading Spinner Solo en Carga Inicial de Página */}
+        {/* Carga Inicial cubierta por el Global LoadingOverlay */}
         {initialLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-[#D9A6B8]">
-            <Loader2 className="w-8 h-8 animate-spin mb-3" />
-            <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">
-              Cargando catálogo StudioBJ...
-            </p>
-          </div>
+          <div className="py-24" />
         ) : productos.length === 0 ? (
           <div className="text-center py-20 px-4 glass-card rounded-2xl border border-[#D9A6B8]/20 max-w-md mx-auto">
             <p className="font-editorial text-xl text-white mb-2">No hay prendas disponibles</p>

@@ -312,7 +312,7 @@ export const AdminPanel: React.FC = () => {
         api.updateProducto(newColorModalProduct.id, {
           variantes: updatedVariants,
         }),
-        'Guardando nuevo color...'
+        'Loading...'
       );
 
       setMessage({
@@ -717,7 +717,7 @@ export const AdminPanel: React.FC = () => {
             }
           }
         })(),
-        'Cargando catálogo StudioBJ...'
+        'Loading...'
       );
     } catch (e: any) {
       setMessage({ type: 'error', text: e.message || 'Error cargando datos' });
@@ -779,46 +779,63 @@ export const AdminPanel: React.FC = () => {
     }
     setIsSavingHero(true);
     try {
-      if (heroForm.id) {
-        // Actualizar existente
-        const updated = await api.updateHeroPlantilla(heroForm.id, {
-          nombre: heroForm.nombre,
-          tag: heroForm.tag,
-          titulo_linea_1: heroForm.titulo_linea_1,
-          titulo_linea_2: heroForm.titulo_linea_2,
-          subtitulo: heroForm.subtitulo,
-          boton_texto: heroForm.boton_texto,
-        });
-        if (activateImmediately && !updated.es_predeterminada) {
-          await api.activateHeroPlantilla(updated.id);
-        }
-        setMessage({
-          type: 'success',
-          text: activateImmediately
-            ? 'Plantilla guardada y activada en la web exitosamente'
-            : 'Plantilla guardada exitosamente en la biblioteca',
-        });
-      } else {
-        // Crear nueva
-        const created = await api.createHeroPlantilla({
-          nombre: heroForm.nombre,
-          tag: heroForm.tag,
-          titulo_linea_1: heroForm.titulo_linea_1,
-          titulo_linea_2: heroForm.titulo_linea_2,
-          subtitulo: heroForm.subtitulo,
-          boton_texto: heroForm.boton_texto,
-          es_predeterminada: activateImmediately,
-        });
-        setSelectedHeroId(created.id);
-        setHeroForm((prev) => ({ ...prev, id: created.id, es_predeterminada: created.es_predeterminada }));
-        setMessage({
-          type: 'success',
-          text: activateImmediately
-            ? 'Nueva plantilla creada y activada en la web exitosamente'
-            : 'Nueva plantilla guardada en la biblioteca',
-        });
-      }
-      await loadHeroPlantillas();
+      await withLoading(
+        (async () => {
+          if (heroForm.id) {
+            // Actualizar existente
+            const updated = await api.updateHeroPlantilla(heroForm.id, {
+              nombre: heroForm.nombre,
+              tag: heroForm.tag,
+              titulo_linea_1: heroForm.titulo_linea_1,
+              titulo_linea_2: heroForm.titulo_linea_2,
+              subtitulo: heroForm.subtitulo,
+              boton_texto: heroForm.boton_texto,
+            });
+            if (activateImmediately && !updated.es_predeterminada) {
+              const activated = await api.activateHeroPlantilla(updated.id);
+              try {
+                localStorage.setItem('studiobj_active_hero', JSON.stringify(activated));
+              } catch {}
+            } else if (updated.es_predeterminada) {
+              try {
+                localStorage.setItem('studiobj_active_hero', JSON.stringify(updated));
+              } catch {}
+            }
+            setMessage({
+              type: 'success',
+              text: activateImmediately
+                ? 'Plantilla guardada y activada en la web exitosamente'
+                : 'Plantilla guardada exitosamente en la biblioteca',
+            });
+          } else {
+            // Crear nueva
+            const created = await api.createHeroPlantilla({
+              nombre: heroForm.nombre,
+              tag: heroForm.tag,
+              titulo_linea_1: heroForm.titulo_linea_1,
+              titulo_linea_2: heroForm.titulo_linea_2,
+              subtitulo: heroForm.subtitulo,
+              boton_texto: heroForm.boton_texto,
+              es_predeterminada: activateImmediately,
+            });
+            setSelectedHeroId(created.id);
+            setHeroForm((prev) => ({ ...prev, id: created.id, es_predeterminada: created.es_predeterminada }));
+            if (activateImmediately) {
+              try {
+                localStorage.setItem('studiobj_active_hero', JSON.stringify(created));
+              } catch {}
+            }
+            setMessage({
+              type: 'success',
+              text: activateImmediately
+                ? 'Nueva plantilla creada y activada en la web exitosamente'
+                : 'Nueva plantilla guardada en la biblioteca',
+            });
+          }
+          await loadHeroPlantillas();
+        })(),
+        'Loading...'
+      );
     } catch (e: any) {
       setMessage({ type: 'error', text: e.message || 'Error al guardar plantilla' });
     } finally {
@@ -828,13 +845,21 @@ export const AdminPanel: React.FC = () => {
 
   const handleActivateHero = async (id: string) => {
     try {
-      await api.activateHeroPlantilla(id);
-      setMessage({ type: 'success', text: 'Plantilla activada como predeterminada en la web' });
-      const updatedList = await loadHeroPlantillas();
-      const current = updatedList.find((h) => h.id === id);
-      if (current && selectedHeroId === id) {
-        setHeroForm((prev) => ({ ...prev, es_predeterminada: true }));
-      }
+      await withLoading(
+        (async () => {
+          const activated = await api.activateHeroPlantilla(id);
+          try {
+            localStorage.setItem('studiobj_active_hero', JSON.stringify(activated));
+          } catch {}
+          setMessage({ type: 'success', text: 'Plantilla activada como predeterminada en la web' });
+          const updatedList = await loadHeroPlantillas();
+          const current = updatedList.find((h) => h.id === id);
+          if (current && selectedHeroId === id) {
+            setHeroForm((prev) => ({ ...prev, es_predeterminada: true }));
+          }
+        })(),
+        'Loading...'
+      );
     } catch (e: any) {
       setMessage({ type: 'error', text: e.message || 'Error al activar plantilla' });
     }
@@ -957,7 +982,7 @@ export const AdminPanel: React.FC = () => {
     try {
       await withLoading(
         api.toggleProductoEstado(id, !actual),
-        !actual ? 'Activando producto...' : 'Deshabilitando producto...'
+        'Loading...'
       );
       setMessage({ type: 'success', text: `Producto ${!actual ? 'activado' : 'deshabilitado'} con éxito.` });
       loadData();
@@ -1046,13 +1071,13 @@ export const AdminPanel: React.FC = () => {
       if (editingItem) {
         await withLoading(
           api.updateProducto(editingItem.id, payload),
-          'Guardando cambios de color...'
+          'Loading...'
         );
         setMessage({ type: 'success', text: `Colores de "${editingItem.nombre}" actualizados con éxito` });
       } else {
         await withLoading(
           api.createProducto(payload),
-          'Guardando producto...'
+          'Loading...'
         );
         setMessage({ type: 'success', text: 'Producto y variantes creados con éxito' });
       }
@@ -1762,11 +1787,9 @@ export const AdminPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Loading Spinner */}
+        {/* Carga cubierta por el Global LoadingOverlay */}
         {loadingData ? (
-          <div className="py-20 flex justify-center items-center text-[#D9A6B8]">
-            <Loader2 className="w-8 h-8 animate-spin" />
-          </div>
+          <div className="py-20" />
         ) : (
           <>
             {/* --- TAB PRODUCTOS --- */}

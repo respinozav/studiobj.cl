@@ -19,7 +19,7 @@ export const AdminLogin: React.FC = () => {
     setError(null);
     setIsLoading(true);
     try {
-      await withLoading(login(email, password), 'Verificando acceso...');
+      await withLoading(login(email, password), 'Loading...');
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');

@@ -11,48 +11,40 @@ interface LoadingContextType {
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 
-const DELAY_MS = 120; // Tiempo de espera antes de mostrar para evitar parpadeos en llamadas ultra-rápidas
-const MIN_VISIBLE_MS = 280; // Tiempo mínimo de permanencia para una animación suave y perceptible
+const MIN_VISIBLE_MS = 320; // Tiempo mínimo para que la rotación se aprecie con suavidad sin destellos
 
 export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [message, setMessage] = useState('Cargando...');
+  const [message, setMessage] = useState('Loading...');
 
   const pendingCount = useRef(0);
   const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const minTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showStartTime = useRef<number | null>(null);
 
-  const showLoading = useCallback((msg?: string) => {
+  const showLoading = useCallback((_msg?: string) => {
     pendingCount.current += 1;
-    if (msg) setMessage(msg);
+    setMessage('Loading...');
 
-    // Si ya está visible, solo actualizamos el mensaje
+    // Si ya está visible, aseguramos estado
     if (showStartTime.current !== null) {
       return;
     }
 
-    // Si aún no está programado, programamos la aparición con retardo anti-parpadeo
-    if (!delayTimer.current) {
-      delayTimer.current = setTimeout(() => {
-        showStartTime.current = Date.now();
-        setIsVisible(true);
-        delayTimer.current = null;
-      }, DELAY_MS);
-    }
+    // Activación inmediata
+    showStartTime.current = Date.now();
+    setIsVisible(true);
   }, []);
 
   const hideLoading = useCallback(() => {
     pendingCount.current = Math.max(0, pendingCount.current - 1);
 
     if (pendingCount.current === 0) {
-      // Si aún no se había mostrado porque la llamada terminó antes de DELAY_MS, cancelamos el timer
       if (delayTimer.current) {
         clearTimeout(delayTimer.current);
         delayTimer.current = null;
       }
 
-      // Si ya está visible en pantalla, aseguramos que cumpla el tiempo mínimo para evitar flash
       if (showStartTime.current !== null) {
         const elapsed = Date.now() - showStartTime.current;
         const remaining = Math.max(0, MIN_VISIBLE_MS - elapsed);
@@ -69,8 +61,8 @@ export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const withLoading = useCallback(
-    async <T,>(promise: Promise<T>, msg?: string): Promise<T> => {
-      showLoading(msg);
+    async <T,>(promise: Promise<T>, _msg?: string): Promise<T> => {
+      showLoading('Loading...');
       try {
         return await promise;
       } finally {

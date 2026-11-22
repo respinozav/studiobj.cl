@@ -3,8 +3,29 @@ import { ArrowDown, Sparkles } from 'lucide-react';
 import { HeroTemplate } from '../types';
 import { api } from '../services/api';
 
-export const Hero: React.FC = () => {
-  const [heroData, setHeroData] = useState<HeroTemplate | null>(null);
+const getCachedHero = (): HeroTemplate | null => {
+  try {
+    const raw = localStorage.getItem('studiobj_active_hero');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
+interface HeroProps {
+  heroData?: HeroTemplate | null;
+}
+
+export const Hero: React.FC<HeroProps> = ({ heroData: propHero }) => {
+  const [heroData, setHeroData] = useState<HeroTemplate | null>(() => propHero || getCachedHero());
+
+  useEffect(() => {
+    if (propHero) {
+      setHeroData(propHero);
+      try {
+        localStorage.setItem('studiobj_active_hero', JSON.stringify(propHero));
+      } catch {}
+    }
+  }, [propHero]);
 
   useEffect(() => {
     let isMounted = true;
@@ -13,6 +34,9 @@ export const Hero: React.FC = () => {
       .then((data) => {
         if (isMounted && data) {
           setHeroData(data);
+          try {
+            localStorage.setItem('studiobj_active_hero', JSON.stringify(data));
+          } catch {}
         }
       })
       .catch((e) => console.warn('Carga dinámica Hero (usando fallback)', e));
