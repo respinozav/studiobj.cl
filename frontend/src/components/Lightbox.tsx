@@ -18,20 +18,38 @@ export const Lightbox: React.FC<Props> = ({
   colorName,
   onClose,
 }) => {
-  if (!producto) return null;
-
-  const imageList = imagenes.length > 0 ? imagenes : [producto.imagen_base64];
+  const imageList = imagenes.length > 0 ? imagenes : (producto ? [producto.imagen_base64] : []);
   const [currentIdx, setCurrentIdx] = useState<number>(initialImageIndex);
   const [zoomLevel, setZoomLevel] = useState<number>(1); // 1x por defecto
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Bloquear scroll de la página completa cuando el visor/modal está abierto
+  useEffect(() => {
+    if (!producto) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [producto]);
+
   useEffect(() => {
     setCurrentIdx(initialImageIndex);
     setZoomLevel(1);
     setPosition({ x: 0, y: 0 });
   }, [initialImageIndex, imagenes, producto]);
+
+  if (!producto) return null;
 
   const handleZoomToggle = () => {
     setZoomLevel((prev) => (prev === 1 ? 2 : prev === 2 ? 3 : 1));

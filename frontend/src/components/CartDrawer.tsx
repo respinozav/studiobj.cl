@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Trash2, Plus, Minus, MessageCircle, MapPin, User } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
@@ -16,6 +16,21 @@ export const CartDrawer: React.FC = () => {
 
   const [nombre, setNombre] = useState('');
   const [comuna, setComuna] = useState('');
+
+  // Bloquear scroll de la página completa cuando el carrito/drawer está abierto
+  useEffect(() => {
+    if (!isCartOpen) return;
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+    };
+  }, [isCartOpen]);
 
   if (!isCartOpen) return null;
 

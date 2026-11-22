@@ -473,9 +473,9 @@ export const AdminPanel: React.FC = () => {
     }
   }, [token, authLoading, navigate]);
 
-  // Bloquear scroll de la página completa cuando el modal está abierto (solo scroll dentro del modal)
+  // Bloquear scroll de la página completa cuando un modal o visor está abierto
   useEffect(() => {
-    if (isModalOpen) {
+    if (isModalOpen || lightboxProduct || isSidebarOpen) {
       const prevBodyOverflow = document.body.style.overflow;
       const prevHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -485,7 +485,7 @@ export const AdminPanel: React.FC = () => {
         document.documentElement.style.overflow = prevHtmlOverflow;
       };
     }
-  }, [isModalOpen]);
+  }, [isModalOpen, lightboxProduct, isSidebarOpen]);
 
   // Carga de datos según pestaña
   const loadData = async () => {
