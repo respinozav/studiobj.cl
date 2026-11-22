@@ -1,47 +1,126 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-CL" prefix="og: https://ogp.me/ns#">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo-256.png" />
     <link rel="apple-touch-icon" href="/logo-512.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
 
     <!-- Metadatos Primarios y Slogan Oficial -->
-    <title>StudioBJ – Fitness & Fashion</title>
-    <meta name="title" content="StudioBJ – Fitness & Fashion" />
-    <meta name="description" content="StudioBJ – Fitness & Fashion. Ropa deportiva de compresión premium, tejidos transpirables y diseño exclusivo pensado para la mujer moderna en Chile." />
+    <title>StudioBJ – Activewear & Fitness Fashion Chile | Compresión Premium</title>
+    <meta name="title" content="StudioBJ – Activewear & Fitness Fashion Chile | Compresión Premium" />
+    <meta name="description" content="Descubre StudioBJ: Ropa deportiva femenina de compresión inteligente, tejidos seamless transpirables y siluetas estilizadoras en Chile. Calzas, tops, enteritos y sets con despacho a todo el país." />
+    <meta name="keywords" content="ropa deportiva mujer chile, activewear chile, calzas deportivas mujer, leggings compresión santiago, petos deportivos mujer, enteritos deportivos chile, conjuntos fitness mujer, seamless activewear chile, ropa gimnasio mujer chile, studiobj, studiobj chile, studiobj.cl" />
+    <meta name="author" content="StudioBJ Chile" />
+    <meta name="publisher" content="StudioBJ" />
+    <link rel="canonical" href="https://studiobj.cl/" />
+
+    <!-- Indexación Avanzada para Motores de Búsqueda (Google, Bing, Yahoo, Yandex) -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large" />
+
+    <!-- Geolocalización para Búsquedas Locales en Chile (Local SEO) -->
+    <meta name="geo.region" content="CL-RM" />
+    <meta name="geo.placename" content="Santiago, Chile" />
+    <meta name="geo.position" content="-33.4489;-70.6693" />
+    <meta name="ICBM" content="-33.4489, -70.6693" />
     <meta name="theme-color" content="#1C0F18" />
 
-    <!-- Open Graph / WhatsApp / Facebook -->
+    <!-- Open Graph / WhatsApp / Facebook / Instagram -->
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_CL" />
     <meta property="og:url" content="https://studiobj.cl/" />
-    <meta property="og:site_name" content="StudioBJ – Fitness & Fashion" />
-    <meta property="og:title" content="StudioBJ – Fitness & Fashion" />
-    <meta property="og:description" content="StudioBJ – Fitness & Fashion. Ropa deportiva de compresión premium, siluetas estilizadoras y diseño exclusivo." />
+    <meta property="og:site_name" content="StudioBJ – Activewear & Fitness Fashion Chile" />
+    <meta property="og:title" content="StudioBJ – Activewear & Fitness Fashion Chile" />
+    <meta property="og:description" content="Ropa deportiva de compresión inteligente y diseño exclusivo pensado para la mujer moderna en Chile. Compra directo por WhatsApp con despacho a todo Chile." />
     <meta property="og:image" content="https://studiobj.cl/og-image.jpg" />
     <meta property="og:image:secure_url" content="https://studiobj.cl/og-image.jpg" />
     <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="StudioBJ – Fitness & Fashion" />
+    <meta property="og:image:alt" content="StudioBJ Activewear – Moldea tu silueta. Entrena sin límites." />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://studiobj.cl/" />
-    <meta name="twitter:title" content="StudioBJ – Fitness & Fashion" />
-    <meta name="twitter:description" content="StudioBJ – Fitness & Fashion. Ropa deportiva de compresión premium y diseño exclusivo." />
+    <meta name="twitter:title" content="StudioBJ – Activewear & Fitness Fashion Chile" />
+    <meta name="twitter:description" content="Activewear seamless de compresión inteligente y diseño exclusivo. Despacho rápido a todo Chile." />
     <meta name="twitter:image" content="https://studiobj.cl/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Colección StudioBJ Chile" />
 
     <!-- Fallbacks para indexadores antiguos y WhatsApp crawler -->
     <link rel="image_src" href="https://studiobj.cl/og-image.jpg" />
     <meta itemprop="name" content="StudioBJ – Fitness & Fashion" />
-    <meta itemprop="description" content="StudioBJ – Fitness & Fashion. Ropa deportiva de compresión y diseño exclusivo." />
+    <meta itemprop="description" content="Activewear de compresión premium en Chile. Calzas, tops y enteritos." />
     <meta itemprop="image" content="https://studiobj.cl/og-image.jpg" />
 
     <!-- Google Fonts: Cormorant Garamond & Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Schema.org JSON-LD Structured Data: Organization, WebSite & ClothingStore para Rich Snippets en Google -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://studiobj.cl/#organization",
+          "name": "StudioBJ",
+          "url": "https://studiobj.cl/",
+          "logo": {
+            "@type": "ImageObject",
+            "@id": "https://studiobj.cl/#logo",
+            "url": "https://studiobj.cl/logo-512.png",
+            "caption": "StudioBJ Logo Oficial"
+          },
+          "image": "https://studiobj.cl/og-image.jpg",
+          "description": "Marca de ropa deportiva femenina activewear de alta compresión y diseño de lujo en Chile.",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Santiago",
+            "addressRegion": "Región Metropolitana",
+            "addressCountry": "CL"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "Customer Service",
+            "telephone": "+56961250269",
+            "availableLanguage": ["Spanish"]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://studiobj.cl/#website",
+          "url": "https://studiobj.cl/",
+          "name": "StudioBJ Activewear",
+          "publisher": {
+            "@id": "https://studiobj.cl/#organization"
+          },
+          "inLanguage": "es-CL"
+        },
+        {
+          "@type": "ClothingStore",
+          "@id": "https://studiobj.cl/#store",
+          "name": "StudioBJ – Fitness & Fashion",
+          "url": "https://studiobj.cl/",
+          "logo": "https://studiobj.cl/logo-512.png",
+          "image": "https://studiobj.cl/og-image.jpg",
+          "priceRange": "$$",
+          "currenciesAccepted": "CLP",
+          "paymentAccepted": "Transferencia bancaria, Tarjetas de Débito/Crédito",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Santiago",
+            "addressCountry": "CL"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-[#1C0F18] text-[#FFFFFF] font-sans antialiased selection:bg-[#D9A6B8] selection:text-[#1C0F18]">
     <div id="root"></div>

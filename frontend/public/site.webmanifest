@@ -1,0 +1,27 @@
+{
+  "name": "StudioBJ Activewear – Fitness & Fashion",
+  "short_name": "StudioBJ",
+  "description": "Ropa deportiva femenina de compresión premium y diseño exclusivo en Chile. Activewear seamless, calzas, tops y enteritos.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1C0F18",
+  "theme_color": "#1C0F18",
+  "lang": "es-CL",
+  "categories": ["shopping", "lifestyle", "fitness"],
+  "icons": [
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

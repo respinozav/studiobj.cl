@@ -69,6 +69,62 @@ export const PublicStore: React.FC = () => {
     fetchInitialData();
   }, [withLoading]);
 
+  // Super SEO Dinámico: Inyección de Schema.org ItemList / Product para indexación en Google
+  useEffect(() => {
+    if (!allProductos || allProductos.length === 0) return;
+
+    const schemaData = {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'Catálogo Oficial StudioBJ – Activewear & Fitness Fashion',
+      description: 'Prendas deportivas de compresión inteligente, sets y calzas en Chile',
+      numberOfItems: allProductos.length,
+      itemListElement: allProductos.slice(0, 25).map((prod, index) => {
+        const primaryImg =
+          prod.variantes?.[0]?.imagenes?.[0] || prod.imagen_base64 || 'https://studiobj.cl/og-image.jpg';
+        return {
+          '@type': 'ListItem',
+          position: index + 1,
+          item: {
+            '@type': 'Product',
+            name: prod.nombre,
+            description: prod.descripcion || `${prod.nombre} - Ropa deportiva premium StudioBJ en Chile`,
+            image: primaryImg.startsWith('data:') ? 'https://studiobj.cl/og-image.jpg' : primaryImg,
+            brand: {
+              '@type': 'Brand',
+              name: 'StudioBJ',
+            },
+            offers: {
+              '@type': 'Offer',
+              price: prod.precio,
+              priceCurrency: 'CLP',
+              availability: prod.activo ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+              url: 'https://studiobj.cl/#catalogo-productos',
+              seller: {
+                '@type': 'Organization',
+                name: 'StudioBJ',
+              },
+            },
+          },
+        };
+      }),
+    };
+
+    let scriptEl = document.getElementById('schema-products-jsonld') as HTMLScriptElement | null;
+    if (!scriptEl) {
+      scriptEl = document.createElement('script');
+      scriptEl.id = 'schema-products-jsonld';
+      scriptEl.type = 'application/ld+json';
+      document.head.appendChild(scriptEl);
+    }
+    scriptEl.textContent = JSON.stringify(schemaData);
+
+    return () => {
+      const el = document.getElementById('schema-products-jsonld');
+      if (el) el.remove();
+    };
+  }, [allProductos]);
+
   // Transición suave y elegante al cambiar de categoría (cero pestañeos, cross-fade luxury)
   useEffect(() => {
     if (initialLoading) return;
