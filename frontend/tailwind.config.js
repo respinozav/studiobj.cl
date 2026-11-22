@@ -17,8 +17,9 @@ export default {
         }
       },
       fontFamily: {
-        serif: ['"Cormorant Garamond"', 'serif'],
-        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+        serif: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        editorial: ['"Cormorant Garamond"', 'Georgia', 'serif'],
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         calibri: ['Calibri', 'Candara', 'Segoe', '"Segoe UI"', 'Optima', 'Arial', 'sans-serif'],
       }
     },

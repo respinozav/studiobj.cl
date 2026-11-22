@@ -224,13 +224,13 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
         </h3>
 
         {/* Fila de Precios y Descuento */}
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-sm sm:text-base font-bold text-white tracking-tight">
+        <div className="flex items-baseline gap-1.5 price-tag">
+          <span className="text-sm sm:text-base font-bold text-white tracking-tight price-tag">
             {formatCLP(producto.precio)}
           </span>
           {producto.precio_anterior && producto.precio_anterior > producto.precio && (
             <>
-              <span className="text-[11px] text-gray-500 line-through">
+              <span className="text-[11px] text-gray-500 line-through price-tag">
                 {formatCLP(producto.precio_anterior)}
               </span>
               {discountPct && (
