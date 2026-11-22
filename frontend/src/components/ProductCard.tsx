@@ -103,13 +103,15 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
   return (
     <div className="group relative flex flex-col rounded-2xl overflow-hidden border border-white/[0.08] bg-[#1E0F1B] transition-all duration-300 hover:border-[#D9A6B8]/30 shadow-xl">
       {/* 1. Contenedor Imagen Aspecto Vertical 3:4 */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[#160B14]">
+      <div
+        className="relative aspect-[3/4] w-full overflow-hidden bg-[#160B14] cursor-pointer"
+        onClick={() => onOpenLightbox(producto, currentImages, selectedColor, activeImageIdx)}
+      >
         <img
           src={currentImage}
           alt={`${producto.nombre} - ${selectedColor}`}
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out cursor-pointer"
+          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
           loading="lazy"
-          onClick={() => onOpenLightbox(producto, currentImages, selectedColor, activeImageIdx)}
         />
 
         {/* Badge CRO Superior Izquierda (Top Ventas, Últimas unidades, Nuevo) */}
@@ -121,7 +123,10 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
 
         {/* Botón Lupa Superior Derecha */}
         <button
-          onClick={() => onOpenLightbox(producto, currentImages, selectedColor, activeImageIdx)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenLightbox(producto, currentImages, selectedColor, activeImageIdx);
+          }}
           className="absolute top-2.5 right-2.5 z-10 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1C0F18]/80 hover:bg-[#311B2B] text-white/90 hover:text-white border border-white/10 backdrop-blur-md shadow-md flex items-center justify-center transition-all duration-200 active:scale-95"
           title="Ver detalle en alta resolución"
           aria-label="Abrir lupa de detalle"
@@ -129,28 +134,49 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
           <Search className="w-3.5 h-3.5 stroke-[2]" />
         </button>
 
-        {/* Swatches de Color Circulares DENTRO DE LA IMAGEN (esquina inferior izquierda) */}
-        <div className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1.5 drop-shadow-md">
-          {variantes.map((v, idx) => {
-            const isColSelected = selectedColor.toLowerCase() === v.color.toLowerCase();
-            return (
-              <button
-                key={idx}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSelectColor(v.color);
-                }}
-                className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full transition-all duration-200 ${
-                  isColSelected
-                    ? 'ring-2 ring-white scale-110 shadow-lg'
-                    : 'border border-white/40 hover:scale-105 opacity-90'
-                }`}
-                style={{ backgroundColor: v.color_hex || getColorHex(v.color) }}
-                title={`${v.color}`}
+        {/* Tag de Color Abajo Lado Izquierdo DENTRO de la Imagen */}
+        <div
+          className="absolute bottom-2.5 left-2.5 z-10 flex items-center gap-1.5 bg-[#1C0F18]/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15 shadow-lg max-w-[85%]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {variantes.length > 1 ? (
+            <div className="flex items-center gap-1.5">
+              {variantes.map((v, idx) => {
+                const isColSelected = selectedColor.toLowerCase() === v.color.toLowerCase();
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelectColor(v.color);
+                    }}
+                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full transition-all duration-200 flex-shrink-0 ${
+                      isColSelected
+                        ? 'ring-2 ring-white scale-110 shadow-sm'
+                        : 'border border-white/40 opacity-70 hover:opacity-100 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: v.color_hex || getColorHex(v.color) }}
+                    title={v.color}
+                    aria-label={`Seleccionar color ${v.color}`}
+                  />
+                );
+              })}
+              <span className="text-[10px] sm:text-[11px] font-medium text-white/95 capitalize truncate max-w-[90px] sm:max-w-[120px]">
+                {selectedColor}
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border border-white/40 flex-shrink-0"
+                style={{ backgroundColor: activeVariant.color_hex || getColorHex(selectedColor) }}
               />
-            );
-          })}
+              <span className="text-[10px] sm:text-[11px] font-medium text-white/95 capitalize truncate max-w-[120px]">
+                {selectedColor}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Navegador de fotos si tiene más de 1 imagen en este color */}
@@ -187,10 +213,9 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
 
       {/* 2. Cuerpo de Información de la Tarjeta */}
       <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-2.5 bg-[#1E0F1B]">
-        {/* Fila: Categoría (izq) y Color (der) */}
+        {/* Fila: Categoría */}
         <div className="flex items-center justify-between text-[11px] sm:text-xs text-gray-400 font-normal">
           <span>{producto.categoria_nombre || 'Activewear'}</span>
-          <span className="capitalize">{selectedColor}</span>
         </div>
 
         {/* Nombre del Producto */}

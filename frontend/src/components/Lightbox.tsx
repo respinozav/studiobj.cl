@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, ZoomIn, ZoomOut, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Producto } from '../types';
+import { getColorHex } from '../utils/colorsAndSizes';
 
 interface Props {
   producto: Producto | null;
@@ -104,7 +105,7 @@ export const Lightbox: React.FC<Props> = ({
               Visor de Alta Definición
             </span>
             {colorName && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#311B2B] text-white border border-[#D9A6B8]/30 font-semibold">
+              <span className="hidden sm:inline-flex text-[10px] px-2 py-0.5 rounded-full bg-[#311B2B] text-white border border-[#D9A6B8]/30 font-semibold">
                 Color: {colorName}
               </span>
             )}
@@ -220,8 +221,21 @@ export const Lightbox: React.FC<Props> = ({
           </div>
         )}
 
+        {/* Tag de Color Abajo Lado Izquierdo DENTRO de la Imagen en Visor */}
+        {colorName && (
+          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#1C0F18]/90 backdrop-blur-md border border-[#D9A6B8]/30 shadow-xl pointer-events-none">
+            <span
+              className="w-2.5 h-2.5 rounded-full border border-white/40 flex-shrink-0"
+              style={{ backgroundColor: getColorHex(colorName) }}
+            />
+            <span className="text-[11px] sm:text-xs font-medium text-white capitalize">
+              {colorName}
+            </span>
+          </div>
+        )}
+
         {/* Guía Flotante Táctil */}
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#1C0F18]/85 backdrop-blur-md border border-[#D9A6B8]/20 text-[10px] text-gray-300 pointer-events-none">
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-[#1C0F18]/85 backdrop-blur-md border border-[#D9A6B8]/20 text-[10px] text-gray-300 pointer-events-none hidden sm:block">
           Arrastra para explorar detalles y costuras • Zoom: {zoomLevel}x
         </div>
       </div>
