@@ -1931,19 +1931,10 @@ export const AdminPanel: React.FC = () => {
                           {/* Cortina Desplegable Móvil: Listado de Imagen, Color y Tallas */}
                           {isExpanded && (
                             <div className="mt-3 p-3 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/20 space-y-3 animate-fadeIn">
-                              <div className="flex items-center justify-between pb-1.5 border-b border-[#D9A6B8]/15 gap-2">
-                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider truncate">
-                                  Variantes ({getProductAllVariants(p).length} colores):
+                              <div className="flex items-center justify-between pb-1.5 border-b border-[#D9A6B8]/15">
+                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider">
+                                  Variantes ({getProductAllVariants(p).length} {getProductAllVariants(p).length === 1 ? 'color' : 'colores'}):
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenAddColorModal(p)}
-                                  className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-[#D9A6B8] text-[11px] font-bold transition-all shadow-sm active:scale-95"
-                                  title={`Agregar nuevo color a ${p.nombre}`}
-                                >
-                                  <Plus className="w-3 h-3" />
-                                  <span>+ Agregar Color</span>
-                                </button>
                               </div>
 
                               <div className="divide-y divide-[#D9A6B8]/15 space-y-3">
@@ -2013,6 +2004,15 @@ export const AdminPanel: React.FC = () => {
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                             <span>Editar</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenAddColorModal(p)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-[#D9A6B8] text-xs font-semibold transition-colors"
+                            title={`Agregar nuevo color a ${p.nombre}`}
+                          >
+                            <Palette className="w-3.5 h-3.5" />
+                            <span>+ Color</span>
                           </button>
 
                           <button
@@ -2135,6 +2135,13 @@ export const AdminPanel: React.FC = () => {
                                     <Edit2 className="w-4 h-4" />
                                   </button>
                                   <button
+                                    onClick={() => handleOpenAddColorModal(p)}
+                                    className="p-1.5 rounded hover:bg-[#311B2B] text-[#D9A6B8] hover:text-white transition-colors"
+                                    title={`Agregar nuevo color a ${p.nombre}`}
+                                  >
+                                    <Palette className="w-4 h-4" />
+                                  </button>
+                                  <button
                                     onClick={() => handleToggleEstadoProducto(p.id, p.activo)}
                                     className={`p-1.5 rounded transition-colors ${
                                       p.activo
@@ -2161,15 +2168,6 @@ export const AdminPanel: React.FC = () => {
                                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1C0F18] text-gray-300 border border-[#D9A6B8]/20 font-semibold">
                                             {getProductAllVariants(p).length} {getProductAllVariants(p).length === 1 ? 'color' : 'colores'}
                                           </span>
-                                          <button
-                                            type="button"
-                                            onClick={() => handleOpenAddColorModal(p)}
-                                            className="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-[#D9A6B8] text-xs font-bold transition-all shadow-sm active:scale-95"
-                                            title={`Agregar nuevo color a ${p.nombre}`}
-                                          >
-                                            <Plus className="w-3.5 h-3.5" />
-                                            <span>+ Agregar Color</span>
-                                          </button>
                                         </div>
                                         <span className="text-[11px] text-gray-400">
                                           Pincha la imagen para ver en alta definición (Lightbox)
