@@ -25,21 +25,17 @@ export const Lightbox: React.FC<Props> = ({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Bloquear scroll de la página completa cuando el visor/modal está abierto
+  // Bloquear scroll de la página completa cuando el visor/modal está abierto y restaurar al cerrar
   useEffect(() => {
     if (!producto) return;
-    const prevBodyOverflow = document.body.style.overflow;
-    const prevHtmlOverflow = document.documentElement.style.overflow;
-    const prevTouchAction = document.body.style.touchAction;
 
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
 
     return () => {
-      document.body.style.overflow = prevBodyOverflow;
-      document.documentElement.style.overflow = prevHtmlOverflow;
-      document.body.style.touchAction = prevTouchAction;
+      document.body.style.removeProperty('overflow');
+      document.documentElement.style.removeProperty('overflow');
+      document.body.style.removeProperty('touch-action');
     };
   }, [producto]);
 

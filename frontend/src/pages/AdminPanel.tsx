@@ -131,13 +131,19 @@ export const AdminPanel: React.FC = () => {
   const [lightboxInitialIndex, setLightboxInitialIndex] = useState<number>(0);
   const [lightboxColorName, setLightboxColorName] = useState<string | undefined>(undefined);
 
-  const openProductLightbox = (p: Producto, initialIndex: number = 0, colorName?: string) => {
-    const allImgs = getProductAllImages(p);
-    const urlList = allImgs.length > 0 ? allImgs.map((item) => item.url) : [p.imagen_base64];
+  const openVariantLightbox = (p: Producto, colorName: string, imagenUrl?: string) => {
+    // Obtener exclusivamente las imágenes asociadas a este color específico
+    const variantMatch = p.variantes?.find(
+      (item) => item.color.trim().toLowerCase() === colorName.trim().toLowerCase()
+    );
+    const specificImages = (variantMatch?.imagenes && variantMatch.imagenes.length > 0)
+      ? variantMatch.imagenes
+      : imagenUrl ? [imagenUrl] : [p.imagen_base64];
+
     setLightboxProduct(p);
-    setLightboxImages(urlList);
-    setLightboxInitialIndex(initialIndex);
-    setLightboxColorName(colorName || allImgs[initialIndex]?.color || p.color);
+    setLightboxImages(specificImages);
+    setLightboxInitialIndex(0);
+    setLightboxColorName(colorName);
   };
 
   // Estado para fila tipo cortina (solo 1 producto desplegado a la vez)
@@ -643,16 +649,15 @@ export const AdminPanel: React.FC = () => {
     }
   }, [token, authLoading, navigate]);
 
-  // Bloquear scroll de la página completa cuando un modal o visor está abierto
+  // Bloquear scroll de la página completa cuando un modal o visor está abierto y restaurar limpiamente
   useEffect(() => {
     if (isModalOpen || lightboxProduct || isSidebarOpen || newColorModalProduct) {
-      const prevBodyOverflow = document.body.style.overflow;
-      const prevHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = 'hidden';
       document.documentElement.style.overflow = 'hidden';
       return () => {
-        document.body.style.overflow = prevBodyOverflow;
-        document.documentElement.style.overflow = prevHtmlOverflow;
+        document.body.style.removeProperty('overflow');
+        document.documentElement.style.removeProperty('overflow');
+        document.body.style.removeProperty('touch-action');
       };
     }
   }, [isModalOpen, lightboxProduct, isSidebarOpen, newColorModalProduct]);
@@ -1837,14 +1842,11 @@ export const AdminPanel: React.FC = () => {
 
                               <div className="divide-y divide-[#D9A6B8]/15 space-y-3">
                                 {getProductAllVariants(p).map((v, vIdx) => {
-                                  const allImgs = getProductAllImages(p);
-                                  const targetIdx = allImgs.findIndex((img) => img.color === v.color);
-
                                   return (
                                     <div key={vIdx} className="pt-3 first:pt-0 flex items-start gap-3">
                                       {/* 1. Imagen del color */}
                                       <div
-                                        onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                        onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
                                         className="relative cursor-pointer flex-shrink-0 active:scale-95 transition-transform"
                                         title="Tocar para ampliar foto"
                                       >
@@ -1861,7 +1863,7 @@ export const AdminPanel: React.FC = () => {
                                       {/* 2. Color de la imagen + 3. Tallas */}
                                       <div className="flex-1 min-w-0">
                                         <div
-                                          onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                          onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
                                           className="flex items-center gap-2 cursor-pointer mb-1.5"
                                         >
                                           <span
@@ -2071,9 +2073,6 @@ export const AdminPanel: React.FC = () => {
                                       {/* Listado: Imagen | Color de la imagen | Tallas */}
                                       <div className="divide-y divide-[#D9A6B8]/15">
                                         {getProductAllVariants(p).map((v, vIdx) => {
-                                          const allImgs = getProductAllImages(p);
-                                          const targetIdx = allImgs.findIndex((img) => img.color === v.color);
-
                                           return (
                                             <div
                                               key={vIdx}
@@ -2081,7 +2080,7 @@ export const AdminPanel: React.FC = () => {
                                             >
                                               {/* 1. Imagen del color */}
                                               <div
-                                                onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                                onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
                                                 className="relative group cursor-pointer flex-shrink-0"
                                                 title={`Pinchar para ampliar imagen de ${v.color}`}
                                               >
@@ -2097,7 +2096,7 @@ export const AdminPanel: React.FC = () => {
 
                                               {/* 2. Color de la imagen (Punto y Nombre) */}
                                               <div
-                                                onClick={() => openProductLightbox(p, targetIdx >= 0 ? targetIdx : 0, v.color)}
+                                                onClick={() => openVariantLightbox(p, v.color, v.imagen_url)}
                                                 className="flex items-center gap-3 cursor-pointer group/col flex-1 min-w-[200px]"
                                                 title={`Pinchar para ver foto de ${v.color}`}
                                               >

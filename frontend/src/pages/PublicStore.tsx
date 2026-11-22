@@ -25,20 +25,6 @@ export const PublicStore: React.FC = () => {
     initialIndex: number;
   } | null>(null);
 
-  // Bloquear scroll de la página cuando el visor/modal de producto está abierto
-  useEffect(() => {
-    if (lightboxData) {
-      const prevBodyOverflow = document.body.style.overflow;
-      const prevHtmlOverflow = document.documentElement.style.overflow;
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = prevBodyOverflow;
-        document.documentElement.style.overflow = prevHtmlOverflow;
-      };
-    }
-  }, [lightboxData]);
-
   // Cargar Categorías Activas y Todos los Productos en la carga inicial de forma ultra-resiliente
   useEffect(() => {
     const fetchInitialData = async () => {
