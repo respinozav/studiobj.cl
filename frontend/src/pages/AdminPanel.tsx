@@ -2236,11 +2236,10 @@ export const AdminPanel: React.FC = () => {
                                           <button
                                             type="button"
                                             onClick={() => openEditVariantModal(p, v.variantIndex)}
-                                            className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-[#D9A6B8] text-[10px] font-semibold border border-[#D9A6B8]/30 transition-colors"
-                                            title="Editar color, tallas o foto"
+                                            className="p-1.5 rounded-md bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-[#D9A6B8] border border-[#D9A6B8]/30 transition-colors"
+                                            title={`Editar color, tallas o fotos de ${v.color}`}
                                           >
-                                            <Edit2 className="w-3 h-3" />
-                                            <span>Editar</span>
+                                            <Edit2 className="w-3.5 h-3.5" />
                                           </button>
                                           <button
                                             type="button"
@@ -2532,11 +2531,10 @@ export const AdminPanel: React.FC = () => {
                                                 <button
                                                   type="button"
                                                   onClick={() => openEditVariantModal(p, v.variantIndex)}
-                                                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-white text-xs font-semibold border border-[#D9A6B8]/30 transition-all shadow-sm active:scale-95"
+                                                  className="p-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-[#D9A6B8] hover:text-white border border-[#D9A6B8]/30 transition-all shadow-sm active:scale-95"
                                                   title={`Editar color, fotos o tallas de ${v.color}`}
                                                 >
-                                                  <Edit2 className="w-3.5 h-3.5" />
-                                                  <span>Editar</span>
+                                                  <Edit2 className="w-4 h-4" />
                                                 </button>
                                                 <button
                                                   type="button"
@@ -3717,18 +3715,20 @@ export const AdminPanel: React.FC = () => {
                       </h4>
                       <p className="text-[11px] text-gray-400">
                         {editingItem
-                          ? 'Edita las fotografías, tallas o tono de los colores configurados para este producto.'
+                          ? 'Para agregar un nuevo color a este producto, utiliza la opción (+ Color) en la tabla de productos o la cortina de variantes.'
                           : 'Cada color tiene sus propias fotografías de catálogo y disponibilidad de tallas.'}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={addVariant}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-white transition-all shadow-sm"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Agregar Color</span>
-                    </button>
+                    {!editingItem && (
+                      <button
+                        type="button"
+                        onClick={addVariant}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-white transition-all shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Agregar Color</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-3">

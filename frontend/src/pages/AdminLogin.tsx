@@ -9,6 +9,14 @@ export const AdminLogin: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [expiredMsg] = useState<boolean>(() => {
+    const wasExpired = localStorage.getItem('studiobj_session_expired') === 'true';
+    if (wasExpired) {
+      localStorage.removeItem('studiobj_session_expired');
+      return true;
+    }
+    return false;
+  });
 
   const { login } = useAuth();
   const { withLoading } = useLoading();
@@ -55,6 +63,12 @@ export const AdminLogin: React.FC = () => {
             StudioBJ
           </p>
         </div>
+
+        {expiredMsg && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-950/80 border border-amber-500/40 text-xs text-amber-200">
+            Tu sesión ha expirado por 15 minutos de inactividad. Por favor inicia sesión nuevamente.
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 rounded-lg bg-rose-950/80 border border-rose-500/40 text-xs text-rose-200">
