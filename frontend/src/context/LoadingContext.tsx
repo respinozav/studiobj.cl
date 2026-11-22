@@ -25,7 +25,7 @@ export const getRandomLoadingMessage = (): string => {
   return LOADING_MESSAGES[index];
 };
 
-const MIN_VISIBLE_MS = 320; // Tiempo mínimo para que la rotación se aprecie con suavidad sin destellos
+const MIN_VISIBLE_MS = 750; // Tiempo mínimo calibrado para disfrutar la animación y leer la frase con suavidad
 
 export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isVisible, setIsVisible] = useState(false);
