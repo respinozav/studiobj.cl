@@ -9,9 +9,11 @@ import { TrustFeatures } from '../components/TrustFeatures';
 import { Footer } from '../components/Footer';
 import { Categoria, Producto } from '../types';
 import { api } from '../services/api';
+import { useLoading } from '../context/LoadingContext';
 import { Loader2 } from 'lucide-react';
 
 export const PublicStore: React.FC = () => {
+  const { withLoading } = useLoading();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [allProductos, setAllProductos] = useState<Producto[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -29,15 +31,20 @@ export const PublicStore: React.FC = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [catsRes, prodsRes] = await Promise.allSettled([
-          api.getPublicCategorias(),
-          api.getPublicProductos(),
-        ]);
-        if (catsRes.status === 'fulfilled') setCategorias(catsRes.value);
-        if (prodsRes.status === 'fulfilled') {
-          setAllProductos(prodsRes.value);
-          setProductos(prodsRes.value);
-        }
+        await withLoading(
+          (async () => {
+            const [catsRes, prodsRes] = await Promise.allSettled([
+              api.getPublicCategorias(),
+              api.getPublicProductos(),
+            ]);
+            if (catsRes.status === 'fulfilled') setCategorias(catsRes.value);
+            if (prodsRes.status === 'fulfilled') {
+              setAllProductos(prodsRes.value);
+              setProductos(prodsRes.value);
+            }
+          })(),
+          'Cargando colección StudioBJ...'
+        );
       } catch (e) {
         console.error('Error cargando catálogo inicial', e);
       } finally {
@@ -45,7 +52,7 @@ export const PublicStore: React.FC = () => {
       }
     };
     fetchInitialData();
-  }, []);
+  }, [withLoading]);
 
   // Transición suave y elegante al cambiar de categoría (cero pestañeos, cross-fade luxury)
   useEffect(() => {

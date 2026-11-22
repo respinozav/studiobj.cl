@@ -33,6 +33,7 @@ import {
   ZoomIn
 } from 'lucide-react';
 import { Lightbox } from '../components/Lightbox';
+import { useLoading } from '../context/LoadingContext';
 
 const SYSTEM_MODULES = [
   { id: 'productos', label: 'Productos', desc: 'Prendas, fotos por color y tallas' },
@@ -120,6 +121,7 @@ export const getProductAllImages = (p: Producto): ProductImageItem[] => {
 
 export const AdminPanel: React.FC = () => {
   const { user, token, logout, isSuperAdmin, isLoading: authLoading } = useAuth();
+  const { withLoading } = useLoading();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'productos' | 'categorias' | 'colores' | 'hero' | 'usuarios' | 'roles'>('productos');
@@ -306,9 +308,12 @@ export const AdminPanel: React.FC = () => {
 
       const updatedVariants = [...currentVars, newVariant];
 
-      await api.updateProducto(newColorModalProduct.id, {
-        variantes: updatedVariants,
-      });
+      await withLoading(
+        api.updateProducto(newColorModalProduct.id, {
+          variantes: updatedVariants,
+        }),
+        'Guardando nuevo color...'
+      );
 
       setMessage({
         type: 'success',
@@ -667,48 +672,53 @@ export const AdminPanel: React.FC = () => {
     setLoadingData(true);
     setMessage(null);
     try {
-      const [cats, prods, cols] = await Promise.all([
-        api.getAdminCategorias(),
-        api.getAdminProductos(),
-        api.getAdminColores(),
-      ]);
-      setCategorias(cats);
-      setProductos(prods);
-      setColores(cols);
-
-      // Cargar plantillas de portada / hero
-      try {
-        const heroList = await api.getAdminHeroPlantillas();
-        setHeroPlantillas(heroList);
-        const active = heroList.find((h) => h.es_predeterminada) || heroList[0];
-        if (active) {
-          setSelectedHeroId(active.id);
-          setHeroForm({
-            id: active.id,
-            nombre: active.nombre,
-            tag: active.tag,
-            titulo_linea_1: active.titulo_linea_1,
-            titulo_linea_2: active.titulo_linea_2,
-            subtitulo: active.subtitulo,
-            boton_texto: active.boton_texto,
-            es_predeterminada: active.es_predeterminada,
-          });
-        }
-      } catch (heroErr) {
-        console.warn('Error al cargar plantillas hero:', heroErr);
-      }
-      if (isSuperAdmin || allowedModules.includes('usuarios') || allowedModules.includes('roles')) {
-        try {
-          const [users, rls] = await Promise.all([
-            api.getAdminUsuarios(),
-            api.getAdminRoles(),
+      await withLoading(
+        (async () => {
+          const [cats, prods, cols] = await Promise.all([
+            api.getAdminCategorias(),
+            api.getAdminProductos(),
+            api.getAdminColores(),
           ]);
-          setUsuarios(users);
-          setRoles(rls);
-        } catch (authErr: any) {
-          console.warn('Error al cargar usuarios/roles:', authErr);
-        }
-      }
+          setCategorias(cats);
+          setProductos(prods);
+          setColores(cols);
+
+          // Cargar plantillas de portada / hero
+          try {
+            const heroList = await api.getAdminHeroPlantillas();
+            setHeroPlantillas(heroList);
+            const active = heroList.find((h) => h.es_predeterminada) || heroList[0];
+            if (active) {
+              setSelectedHeroId(active.id);
+              setHeroForm({
+                id: active.id,
+                nombre: active.nombre,
+                tag: active.tag,
+                titulo_linea_1: active.titulo_linea_1,
+                titulo_linea_2: active.titulo_linea_2,
+                subtitulo: active.subtitulo,
+                boton_texto: active.boton_texto,
+                es_predeterminada: active.es_predeterminada,
+              });
+            }
+          } catch (heroErr) {
+            console.warn('Error al cargar plantillas hero:', heroErr);
+          }
+          if (isSuperAdmin || allowedModules.includes('usuarios') || allowedModules.includes('roles')) {
+            try {
+              const [users, rls] = await Promise.all([
+                api.getAdminUsuarios(),
+                api.getAdminRoles(),
+              ]);
+              setUsuarios(users);
+              setRoles(rls);
+            } catch (authErr: any) {
+              console.warn('Error al cargar usuarios/roles:', authErr);
+            }
+          }
+        })(),
+        'Cargando catálogo StudioBJ...'
+      );
     } catch (e: any) {
       setMessage({ type: 'error', text: e.message || 'Error cargando datos' });
     } finally {
@@ -945,7 +955,10 @@ export const AdminPanel: React.FC = () => {
   // --- TOGGLE SOFT DELETE ---
   const handleToggleEstadoProducto = async (id: string, actual: boolean) => {
     try {
-      await api.toggleProductoEstado(id, !actual);
+      await withLoading(
+        api.toggleProductoEstado(id, !actual),
+        !actual ? 'Activando producto...' : 'Deshabilitando producto...'
+      );
       setMessage({ type: 'success', text: `Producto ${!actual ? 'activado' : 'deshabilitado'} con éxito.` });
       loadData();
     } catch (e: any) {
@@ -1031,10 +1044,16 @@ export const AdminPanel: React.FC = () => {
           };
 
       if (editingItem) {
-        await api.updateProducto(editingItem.id, payload);
+        await withLoading(
+          api.updateProducto(editingItem.id, payload),
+          'Guardando cambios de color...'
+        );
         setMessage({ type: 'success', text: `Colores de "${editingItem.nombre}" actualizados con éxito` });
       } else {
-        await api.createProducto(payload);
+        await withLoading(
+          api.createProducto(payload),
+          'Guardando producto...'
+        );
         setMessage({ type: 'success', text: 'Producto y variantes creados con éxito' });
       }
       setIsModalOpen(false);

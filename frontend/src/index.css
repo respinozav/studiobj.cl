@@ -65,3 +65,43 @@
 .safe-area-pb {
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
 }
+
+/* Animaciones del Loading Overlay con Borde Luminoso Orbital StudioBJ */
+@keyframes spin-orbital {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.98;
+  }
+}
+
+.animate-spin-orbital {
+  animation: spin-orbital 2.2s linear infinite;
+  will-change: transform;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2.8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-orbital {
+    animation: none;
+  }
+  .animate-pulse-subtle {
+    animation: none;
+  }
+}

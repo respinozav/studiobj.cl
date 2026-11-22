@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLoading } from '../context/LoadingContext';
 import { Lock, Mail, ArrowLeft, Loader2 } from 'lucide-react';
 
 export const AdminLogin: React.FC = () => {
@@ -10,6 +11,7 @@ export const AdminLogin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
+  const { withLoading } = useLoading();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -17,7 +19,7 @@ export const AdminLogin: React.FC = () => {
     setError(null);
     setIsLoading(true);
     try {
-      await login(email, password);
+      await withLoading(login(email, password), 'Verificando acceso...');
       navigate('/admin');
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
