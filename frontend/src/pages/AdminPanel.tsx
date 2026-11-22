@@ -1106,28 +1106,28 @@ export const AdminPanel: React.FC = () => {
     try {
       const payload: any = editingItem
         ? {
-            categoria_id: editingItem.categoria_id,
-            nombre: editingItem.nombre,
+            categoria_id: prodForm.categoria_id,
+            nombre: prodForm.nombre.trim(),
             color: prodForm.variantes[0]?.color || editingItem.color,
             talla: prodForm.variantes[0]?.tallas || editingItem.talla,
             imagen_base64: primaryImg || editingItem.imagen_base64,
-            precio: Number(editingItem.precio),
-            precio_anterior: editingItem.precio_anterior ? Number(editingItem.precio_anterior) : null,
-            etiqueta: editingItem.etiqueta || null,
-            descripcion: editingItem.descripcion || null,
+            precio: Number(prodForm.precio),
+            precio_anterior: prodForm.precio_anterior ? Number(prodForm.precio_anterior) : null,
+            etiqueta: prodForm.etiqueta ? prodForm.etiqueta.trim() : null,
+            descripcion: prodForm.descripcion ? prodForm.descripcion.trim() : null,
             variantes: prodForm.variantes,
             activo: editingItem.activo,
           }
         : {
             categoria_id: prodForm.categoria_id,
-            nombre: prodForm.nombre,
+            nombre: prodForm.nombre.trim(),
             color: prodForm.variantes[0]?.color || prodForm.color,
             talla: prodForm.variantes[0]?.tallas || prodForm.talla,
             imagen_base64: primaryImg,
             precio: Number(prodForm.precio),
             precio_anterior: prodForm.precio_anterior ? Number(prodForm.precio_anterior) : null,
-            etiqueta: prodForm.etiqueta || null,
-            descripcion: prodForm.descripcion || null,
+            etiqueta: prodForm.etiqueta ? prodForm.etiqueta.trim() : null,
+            descripcion: prodForm.descripcion ? prodForm.descripcion.trim() : null,
             variantes: prodForm.variantes,
             activo: prodForm.activo,
           };
@@ -1137,7 +1137,7 @@ export const AdminPanel: React.FC = () => {
           api.updateProducto(editingItem.id, payload),
           'Loading...'
         );
-        setMessage({ type: 'success', text: `Colores de "${editingItem.nombre}" actualizados con éxito` });
+        setMessage({ type: 'success', text: `Producto "${prodForm.nombre}" actualizado con éxito` });
       } else {
         await withLoading(
           api.createProducto(payload),
@@ -3280,7 +3280,7 @@ export const AdminPanel: React.FC = () => {
             <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#D9A6B8]/20 bg-[#261521] z-10 flex-shrink-0">
               <h3 className="font-editorial text-xl sm:text-2xl font-bold text-white">
                 {editingItem && activeTab === 'productos'
-                  ? `Editar Colores de: ${prodForm.nombre}`
+                  ? `Editar Producto: ${prodForm.nombre}`
                   : editingItem
                   ? 'Editar ' + (activeTab === 'colores' ? 'Color' : activeTab === 'usuarios' ? 'Usuario' : activeTab === 'roles' ? 'Rol' : activeTab.slice(0, -1))
                   : 'Crear ' + (activeTab === 'colores' ? 'Color' : activeTab === 'usuarios' ? 'Usuario' : activeTab === 'roles' ? 'Rol' : activeTab.slice(0, -1))}
@@ -3300,59 +3300,92 @@ export const AdminPanel: React.FC = () => {
             {/* FORM PRODUCTO */}
             {activeTab === 'productos' && (
               <form onSubmit={handleSubmitProducto} className="space-y-4 text-xs">
-                {!editingItem ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-gray-300 mb-1 font-semibold">Categoría *</label>
-                      <select
-                        required
-                        value={prodForm.categoria_id}
-                        onChange={(e) => setProdForm({ ...prodForm, categoria_id: e.target.value })}
-                        className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                      >
-                        <option value="">Selecciona categoría</option>
-                        {paginatedCategorias.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.nombre} {!c.activo && '(inactiva)'}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                {/* 1. Datos Principales del Producto (Nombre, Categoría, Precio, Precio Anterior, Etiqueta, Descripción) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-gray-300 mb-1 font-semibold">Nombre del Producto *</label>
+                    <input
+                      type="text"
+                      required
+                      value={prodForm.nombre}
+                      onChange={(e) => setProdForm({ ...prodForm, nombre: e.target.value })}
+                      placeholder="Ej: Calza Sculpt Seamless"
+                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                    />
+                  </div>
 
-                    <div>
-                      <label className="block text-gray-300 mb-1 font-semibold">Nombre del Producto *</label>
-                      <input
-                        type="text"
-                        required
-                        value={prodForm.nombre}
-                        onChange={(e) => setProdForm({ ...prodForm, nombre: e.target.value })}
-                        placeholder="Ej: Calza Sculpt Seamless"
-                        className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-gray-300 mb-1 font-semibold">Categoría *</label>
+                    <select
+                      required
+                      value={prodForm.categoria_id}
+                      onChange={(e) => setProdForm({ ...prodForm, categoria_id: e.target.value })}
+                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                    >
+                      <option value="">Selecciona categoría</option>
+                      {categorias.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre} {!c.activo && '(inactiva)'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                ) : (
-                  <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/20 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">
-                        Editando variantes y colores de:
-                      </span>
-                      <h4 className="text-white text-base font-bold font-editorial">
-                        {prodForm.nombre}
-                      </h4>
-                    </div>
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-[#311B2B] text-[#D9A6B8] border border-[#D9A6B8]/30 font-semibold">
-                      {prodForm.variantes.length} {prodForm.variantes.length === 1 ? 'color disponible' : 'colores disponibles'}
-                    </span>
+
+                  <div>
+                    <label className="block text-gray-300 mb-1 font-semibold">Precio CLP *</label>
+                    <input
+                      type="number"
+                      required
+                      min={100}
+                      value={prodForm.precio}
+                      onChange={(e) => setProdForm({ ...prodForm, precio: Number(e.target.value) })}
+                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                    />
                   </div>
-                )}
+
+                  <div>
+                    <label className="block text-gray-300 mb-1 font-semibold">Precio Anterior CLP (opcional)</label>
+                    <input
+                      type="number"
+                      value={prodForm.precio_anterior}
+                      onChange={(e) => setProdForm({ ...prodForm, precio_anterior: e.target.value })}
+                      placeholder="Para mostrar precio tachado"
+                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-gray-300 mb-1 font-semibold">Etiqueta CRO (opcional)</label>
+                    <select
+                      value={prodForm.etiqueta}
+                      onChange={(e) => setProdForm({ ...prodForm, etiqueta: e.target.value })}
+                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                    >
+                      <option value="">Sin etiqueta</option>
+                      <option value="Top Ventas">Top Ventas</option>
+                      <option value="Últimas unidades">Últimas unidades</option>
+                      <option value="Nuevo">Nuevo</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-gray-300 mb-1 font-semibold">Descripción (opcional)</label>
+                    <textarea
+                      rows={2}
+                      value={prodForm.descripcion}
+                      onChange={(e) => setProdForm({ ...prodForm, descripcion: e.target.value })}
+                      placeholder="Detalles sobre compresión, tejido y calce..."
+                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                    />
+                  </div>
+                </div>
 
                 {/* Variantes por Color, Imágenes y Tallas */}
-                <div className="space-y-3 pt-2 border-t border-[#D9A6B8]/20">
+                <div className="space-y-3 pt-3 border-t border-[#D9A6B8]/20">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="text-white font-bold text-sm">
-                        {editingItem ? `Colores Actuales (${prodForm.variantes.length})` : `Variantes por Color (${prodForm.variantes.length})`}
+                        {editingItem ? `Colores y Variantes (${prodForm.variantes.length})` : `Variantes por Color (${prodForm.variantes.length})`}
                       </h4>
                       <p className="text-[11px] text-gray-400">
                         {editingItem
@@ -3360,16 +3393,14 @@ export const AdminPanel: React.FC = () => {
                           : 'Cada color tiene sus propias fotografías de catálogo y disponibilidad de tallas.'}
                       </p>
                     </div>
-                    {!editingItem && (
-                      <button
-                        type="button"
-                        onClick={addVariant}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-white transition-all shadow-sm"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Agregar Color</span>
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={addVariant}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/30 text-xs font-bold text-white transition-all shadow-sm"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Agregar Color</span>
+                    </button>
                   </div>
 
                   <div className="space-y-3">
@@ -3571,95 +3602,42 @@ export const AdminPanel: React.FC = () => {
                 </div>
 
                 {!editingItem && (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D9A6B8]/20">
-                      <div>
-                        <label className="block text-gray-300 mb-1 font-semibold">Precio CLP *</label>
-                        <input
-                          type="number"
-                          required
-                          min={100}
-                          value={prodForm.precio}
-                          onChange={(e) => setProdForm({ ...prodForm, precio: Number(e.target.value) })}
-                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                        />
-                      </div>
+                  <div className="pt-2 border-t border-[#D9A6B8]/20">
+                    <label className="block text-gray-300 mb-1.5 font-semibold">
+                      Fotografía del Producto (Compresor WebP integrado en navegador)
+                    </label>
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                        <span>Seleccionar Fotografía</span>
+                      </button>
 
-                      <div>
-                        <label className="block text-gray-300 mb-1 font-semibold">Precio Anterior CLP (opcional)</label>
-                        <input
-                          type="number"
-                          value={prodForm.precio_anterior}
-                          onChange={(e) => setProdForm({ ...prodForm, precio_anterior: e.target.value })}
-                          placeholder="Para mostrar precio tachado"
-                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                        />
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block text-gray-300 mb-1 font-semibold">Etiqueta CRO (opcional)</label>
-                        <select
-                          value={prodForm.etiqueta}
-                          onChange={(e) => setProdForm({ ...prodForm, etiqueta: e.target.value })}
-                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                        >
-                          <option value="">Sin etiqueta</option>
-                          <option value="Top Ventas">Top Ventas</option>
-                          <option value="Últimas unidades">Últimas unidades</option>
-                          <option value="Nuevo">Nuevo</option>
-                        </select>
-                      </div>
-
-                      <div className="sm:col-span-2">
-                        <label className="block text-gray-300 mb-1 font-semibold">Descripción</label>
-                        <textarea
-                          rows={2}
-                          value={prodForm.descripcion}
-                          onChange={(e) => setProdForm({ ...prodForm, descripcion: e.target.value })}
-                          placeholder="Detalles sobre compresión, tejido y calce..."
-                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Subida y Compresión de Imagen via Canvas */}
-                    <div className="pt-2 border-t border-[#D9A6B8]/20">
-                      <label className="block text-gray-300 mb-1.5 font-semibold">
-                        Fotografía del Producto (Compresor WebP integrado en navegador)
-                      </label>
-                      <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
-                        >
-                          <Upload className="w-4 h-4" />
-                          <span>Seleccionar Fotografía</span>
-                        </button>
-
-                        {imagePreview && (
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={imagePreview}
-                              alt="Previsualización"
-                              className="w-14 h-16 object-cover rounded border border-[#D9A6B8]/40 bg-[#1C0F18]"
-                            />
-                            <div className="text-[11px] text-gray-300">
-                              <span className="text-emerald-400 font-bold block">✓ Comprimida en WebP</span>
-                              {imageSizeKB && <span>Peso optimizado: {imageSizeKB} KB</span>}
-                            </div>
+                      {imagePreview && (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={imagePreview}
+                            alt="Previsualización"
+                            className="w-14 h-16 object-cover rounded border border-[#D9A6B8]/40 bg-[#1C0F18]"
+                          />
+                          <div className="text-[11px] text-gray-300">
+                            <span className="text-emerald-400 font-bold block">✓ Comprimida en WebP</span>
+                            {imageSizeKB && <span>Peso optimizado: {imageSizeKB} KB</span>}
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                  </>
+                  </div>
                 )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-[#D9A6B8]/20">
@@ -3674,7 +3652,7 @@ export const AdminPanel: React.FC = () => {
                     type="submit"
                     className="px-5 py-2 rounded-lg bg-[#D9A6B8] text-[#1C0F18] font-bold uppercase tracking-wider hover:bg-[#E6BAC8] transition-all"
                   >
-                    {editingItem ? 'Guardar Cambios de Colores' : 'Guardar Producto'}
+                    {editingItem ? 'Guardar Cambios' : 'Guardar Producto'}
                   </button>
                 </div>
               </form>
