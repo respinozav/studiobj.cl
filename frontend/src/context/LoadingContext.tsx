@@ -11,20 +11,34 @@ interface LoadingContextType {
 
 const LoadingContext = createContext<LoadingContextType | undefined>(undefined);
 
+export const LOADING_MESSAGES = [
+  'Un momento, estamos activando tu estilo…',
+  'Cargando actitud…',
+  'Ready to move…',
+  'Elevando tu estilo…',
+  'Entrando en modo fitness…',
+  'Tu próxima versión comienza aquí…',
+];
+
+export const getRandomLoadingMessage = (): string => {
+  const index = Math.floor(Math.random() * LOADING_MESSAGES.length);
+  return LOADING_MESSAGES[index];
+};
+
 const MIN_VISIBLE_MS = 320; // Tiempo mínimo para que la rotación se aprecie con suavidad sin destellos
 
 export const LoadingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [message, setMessage] = useState('Loading...');
+  const [message, setMessage] = useState<string>(() => getRandomLoadingMessage());
 
   const pendingCount = useRef(0);
   const delayTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const minTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showStartTime = useRef<number | null>(null);
 
-  const showLoading = useCallback((_msg?: string) => {
+  const showLoading = useCallback((msg?: string) => {
     pendingCount.current += 1;
-    setMessage('Loading...');
+    setMessage(msg && msg !== 'Loading...' ? msg : getRandomLoadingMessage());
 
     // Si ya está visible, aseguramos estado
     if (showStartTime.current !== null) {

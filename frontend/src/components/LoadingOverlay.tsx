@@ -8,7 +8,7 @@ interface LoadingOverlayProps {
 
 export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   isOpen,
-  message = 'Loading...',
+  message = 'Un momento, estamos activando tu estilo…',
 }) => {
   const [mounted, setMounted] = useState(false);
   const [isRendered, setIsRendered] = useState(false);
@@ -105,13 +105,13 @@ export const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
           </div>
         </div>
 
-        {/* Mensaje únicamente 'Loading...' */}
-        <p className="mt-4 text-xs sm:text-sm font-medium tracking-wide text-[#D9A6B8] animate-fadeIn text-center drop-shadow-sm">
-          {message || 'Loading...'}
+        {/* Mensaje dinámico motivacional StudioBJ */}
+        <p className="mt-4 text-xs sm:text-sm font-medium tracking-wide text-[#D9A6B8] animate-fadeIn text-center drop-shadow-sm px-4">
+          {message}
         </p>
 
         {/* Texto accesible para lectores de pantalla */}
-        <span className="sr-only">Loading...</span>
+        <span className="sr-only">{message}</span>
       </div>
     </div>,
     document.body
