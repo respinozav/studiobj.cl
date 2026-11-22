@@ -147,6 +147,176 @@ export const AdminPanel: React.FC = () => {
     setExpandedProductId((prev) => (prev === id ? null : id));
   };
 
+  // Estados para modal de Nuevo Color desde la Cortina Desplegable
+  const [newColorModalProduct, setNewColorModalProduct] = useState<Producto | null>(null);
+  const [newColorForm, setNewColorForm] = useState<{
+    color: string;
+    color_hex: string;
+    tallas: string;
+    imagen_base64: string;
+    imageSizeKB: number | null;
+  }>({
+    color: '',
+    color_hex: '#18181b',
+    tallas: 'XS,S,M,L,XL',
+    imagen_base64: '',
+    imageSizeKB: null,
+  });
+  const [savingNewColor, setSavingNewColor] = useState(false);
+  const newColorFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenAddColorModal = (p: Producto) => {
+    setNewColorModalProduct(p);
+    setNewColorForm({
+      color: '',
+      color_hex: '#18181b',
+      tallas: 'XS,S,M,L,XL',
+      imagen_base64: '',
+      imageSizeKB: null,
+    });
+  };
+
+  const handleNewColorImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDimension = 900;
+        if (width > height) {
+          if (width > maxDimension) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let webpData = canvas.toDataURL('image/webp', 0.84);
+        if (!webpData.startsWith('data:image/webp')) {
+          webpData = canvas.toDataURL('image/jpeg', 0.85);
+        }
+
+        const base64Length = webpData.length - (webpData.indexOf(',') + 1);
+        const sizeInKB = Math.round((base64Length * 3) / 4 / 1024);
+
+        setNewColorForm((prev) => ({
+          ...prev,
+          imagen_base64: webpData,
+          imageSizeKB: sizeInKB,
+        }));
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const toggleNewColorTalla = (talla: string) => {
+    if (talla === 'ÚNICA') {
+      setNewColorForm((prev) => ({
+        ...prev,
+        tallas: prev.tallas.includes('ÚNICA') ? 'S,M,L' : 'ÚNICA',
+      }));
+      return;
+    }
+
+    setNewColorForm((prev) => {
+      const isUnica = prev.tallas.includes('ÚNICA');
+      let currentSizes = isUnica ? [] : prev.tallas.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+      if (currentSizes.includes(talla)) {
+        currentSizes = currentSizes.filter((s) => s !== talla);
+      } else {
+        currentSizes.push(talla);
+      }
+      return {
+        ...prev,
+        tallas: currentSizes.join(','),
+      };
+    });
+  };
+
+  const selectAllNewColorSizes = () => {
+    setNewColorForm((prev) => ({
+      ...prev,
+      tallas: STANDARD_SIZES.join(','),
+    }));
+  };
+
+  const handleSaveNewColor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newColorModalProduct) return;
+    if (!newColorForm.color.trim()) {
+      alert('Debes ingresar el nombre del nuevo color');
+      return;
+    }
+    if (!newColorForm.imagen_base64) {
+      alert('Debes subir la fotografía de la prenda para este color');
+      return;
+    }
+
+    try {
+      setSavingNewColor(true);
+      const currentVars: ProductoVariante[] =
+        newColorModalProduct.variantes && Array.isArray(newColorModalProduct.variantes) && newColorModalProduct.variantes.length > 0
+          ? [...newColorModalProduct.variantes]
+          : [
+              {
+                color: newColorModalProduct.color,
+                color_hex: getColorHex(newColorModalProduct.color),
+                imagenes: [newColorModalProduct.imagen_base64],
+                tallas: newColorModalProduct.talla,
+              },
+            ];
+
+      const exists = currentVars.some(
+        (v) => v.color.trim().toLowerCase() === newColorForm.color.trim().toLowerCase()
+      );
+      if (exists) {
+        alert(`El color "${newColorForm.color}" ya existe en este producto. Si deseas modificarlo, usa "Editar".`);
+        setSavingNewColor(false);
+        return;
+      }
+
+      const newVariant: ProductoVariante = {
+        color: newColorForm.color.trim(),
+        color_hex: newColorForm.color_hex || getColorHex(newColorForm.color.trim()),
+        imagenes: [newColorForm.imagen_base64],
+        tallas: newColorForm.tallas || 'S,M,L',
+      };
+
+      const updatedVariants = [...currentVars, newVariant];
+
+      await api.updateProducto(newColorModalProduct.id, {
+        variantes: updatedVariants,
+      });
+
+      setMessage({
+        type: 'success',
+        text: `¡Nuevo color "${newVariant.color}" agregado exitosamente a ${newColorModalProduct.nombre}!`,
+      });
+      setNewColorModalProduct(null);
+      loadData();
+    } catch (e: any) {
+      setMessage({ type: 'error', text: e.message || 'Error al agregar nuevo color' });
+    } finally {
+      setSavingNewColor(false);
+    }
+  };
+
   // Estados para Módulo Portada / Hero
   const [heroPlantillas, setHeroPlantillas] = useState<HeroTemplate[]>([]);
   const [selectedHeroId, setSelectedHeroId] = useState<string | null>(null);
@@ -475,7 +645,7 @@ export const AdminPanel: React.FC = () => {
 
   // Bloquear scroll de la página completa cuando un modal o visor está abierto
   useEffect(() => {
-    if (isModalOpen || lightboxProduct || isSidebarOpen) {
+    if (isModalOpen || lightboxProduct || isSidebarOpen || newColorModalProduct) {
       const prevBodyOverflow = document.body.style.overflow;
       const prevHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -485,7 +655,7 @@ export const AdminPanel: React.FC = () => {
         document.documentElement.style.overflow = prevHtmlOverflow;
       };
     }
-  }, [isModalOpen, lightboxProduct, isSidebarOpen]);
+  }, [isModalOpen, lightboxProduct, isSidebarOpen, newColorModalProduct]);
 
   // Carga de datos según pestaña
   const loadData = async () => {
@@ -822,28 +992,42 @@ export const AdminPanel: React.FC = () => {
   const handleSubmitProducto = async (e: React.FormEvent) => {
     e.preventDefault();
     const primaryImg = prodForm.variantes[0]?.imagenes[0] || prodForm.imagen_base64;
-    if (!primaryImg) {
+    if (!primaryImg && !editingItem) {
       alert('Debes subir al menos una fotografía para la primera variante de color');
       return;
     }
     try {
-      const payload: any = {
-        categoria_id: prodForm.categoria_id,
-        nombre: prodForm.nombre,
-        color: prodForm.variantes[0]?.color || prodForm.color,
-        talla: prodForm.variantes[0]?.tallas || prodForm.talla,
-        imagen_base64: primaryImg,
-        precio: Number(prodForm.precio),
-        precio_anterior: prodForm.precio_anterior ? Number(prodForm.precio_anterior) : null,
-        etiqueta: prodForm.etiqueta || null,
-        descripcion: prodForm.descripcion || null,
-        variantes: prodForm.variantes,
-        activo: prodForm.activo,
-      };
+      const payload: any = editingItem
+        ? {
+            categoria_id: editingItem.categoria_id,
+            nombre: editingItem.nombre,
+            color: prodForm.variantes[0]?.color || editingItem.color,
+            talla: prodForm.variantes[0]?.tallas || editingItem.talla,
+            imagen_base64: primaryImg || editingItem.imagen_base64,
+            precio: Number(editingItem.precio),
+            precio_anterior: editingItem.precio_anterior ? Number(editingItem.precio_anterior) : null,
+            etiqueta: editingItem.etiqueta || null,
+            descripcion: editingItem.descripcion || null,
+            variantes: prodForm.variantes,
+            activo: editingItem.activo,
+          }
+        : {
+            categoria_id: prodForm.categoria_id,
+            nombre: prodForm.nombre,
+            color: prodForm.variantes[0]?.color || prodForm.color,
+            talla: prodForm.variantes[0]?.tallas || prodForm.talla,
+            imagen_base64: primaryImg,
+            precio: Number(prodForm.precio),
+            precio_anterior: prodForm.precio_anterior ? Number(prodForm.precio_anterior) : null,
+            etiqueta: prodForm.etiqueta || null,
+            descripcion: prodForm.descripcion || null,
+            variantes: prodForm.variantes,
+            activo: prodForm.activo,
+          };
 
       if (editingItem) {
         await api.updateProducto(editingItem.id, payload);
-        setMessage({ type: 'success', text: 'Producto y variantes actualizados con éxito' });
+        setMessage({ type: 'success', text: `Colores de "${editingItem.nombre}" actualizados con éxito` });
       } else {
         await api.createProducto(payload);
         setMessage({ type: 'success', text: 'Producto y variantes creados con éxito' });
@@ -1636,13 +1820,19 @@ export const AdminPanel: React.FC = () => {
                           {/* Cortina Desplegable Móvil: Listado de Imagen, Color y Tallas */}
                           {isExpanded && (
                             <div className="mt-3 p-3 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/20 space-y-3 animate-fadeIn">
-                              <div className="flex items-center justify-between pb-1 border-b border-[#D9A6B8]/15">
-                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider">
+                              <div className="flex items-center justify-between pb-1.5 border-b border-[#D9A6B8]/15 gap-2">
+                                <span className="text-[10px] font-bold text-[#D9A6B8] uppercase tracking-wider truncate">
                                   Variantes ({getProductAllVariants(p).length} colores):
                                 </span>
-                                <span className="text-[9px] text-gray-400">
-                                  Toca la foto para ampliar
-                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAddColorModal(p)}
+                                  className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-[#D9A6B8] text-[11px] font-bold transition-all shadow-sm active:scale-95"
+                                  title={`Agregar nuevo color a ${p.nombre}`}
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>+ Agregar Color</span>
+                                </button>
                               </div>
 
                               <div className="divide-y divide-[#D9A6B8]/15 space-y-3">
@@ -1855,14 +2045,23 @@ export const AdminPanel: React.FC = () => {
                                 <tr className="bg-[#1C0F18]/90 border-b border-[#D9A6B8]/25 transition-all">
                                   <td colSpan={7} className="p-4 sm:p-5">
                                     <div className="bg-[#261521]/95 p-4 rounded-xl border border-[#D9A6B8]/25 shadow-xl space-y-3">
-                                      <div className="flex items-center justify-between pb-2.5 border-b border-[#D9A6B8]/15">
-                                        <div className="flex items-center gap-2">
+                                      <div className="flex items-center justify-between pb-2.5 border-b border-[#D9A6B8]/15 flex-wrap gap-2">
+                                        <div className="flex items-center gap-2.5">
                                           <span className="text-xs uppercase tracking-wider font-bold text-[#D9A6B8]">
                                             Variantes de {p.nombre}
                                           </span>
                                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#1C0F18] text-gray-300 border border-[#D9A6B8]/20 font-semibold">
                                             {getProductAllVariants(p).length} {getProductAllVariants(p).length === 1 ? 'color' : 'colores'}
                                           </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleOpenAddColorModal(p)}
+                                            className="ml-2 flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-[#D9A6B8] text-xs font-bold transition-all shadow-sm active:scale-95"
+                                            title={`Agregar nuevo color a ${p.nombre}`}
+                                          >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            <span>+ Agregar Color</span>
+                                          </button>
                                         </div>
                                         <span className="text-[11px] text-gray-400">
                                           Pincha la imagen para ver en alta definición (Lightbox)
@@ -2936,14 +3135,11 @@ export const AdminPanel: React.FC = () => {
             {/* Header del Modal Fijo con Margen y Padding Limpio */}
             <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#D9A6B8]/20 bg-[#261521] z-10 flex-shrink-0">
               <h3 className="font-editorial text-xl sm:text-2xl font-bold text-white">
-                {editingItem ? 'Editar' : 'Crear'}{' '}
-                {activeTab === 'colores'
-                  ? 'Color'
-                  : activeTab === 'usuarios'
-                  ? 'Usuario'
-                  : activeTab === 'roles'
-                  ? 'Rol'
-                  : activeTab.slice(0, -1)}
+                {editingItem && activeTab === 'productos'
+                  ? `Editar Colores de: ${prodForm.nombre}`
+                  : editingItem
+                  ? 'Editar ' + (activeTab === 'colores' ? 'Color' : activeTab === 'usuarios' ? 'Usuario' : activeTab === 'roles' ? 'Rol' : activeTab.slice(0, -1))
+                  : 'Crear ' + (activeTab === 'colores' ? 'Color' : activeTab === 'usuarios' ? 'Usuario' : activeTab === 'roles' ? 'Rol' : activeTab.slice(0, -1))}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -2960,47 +3156,67 @@ export const AdminPanel: React.FC = () => {
             {/* FORM PRODUCTO */}
             {activeTab === 'productos' && (
               <form onSubmit={handleSubmitProducto} className="space-y-4 text-xs">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-gray-300 mb-1 font-semibold">Categoría *</label>
-                    <select
-                      required
-                      value={prodForm.categoria_id}
-                      onChange={(e) => setProdForm({ ...prodForm, categoria_id: e.target.value })}
-                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                    >
-                      <option value="">Selecciona categoría</option>
-                      {paginatedCategorias.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre} {!c.activo && '(inactiva)'}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {!editingItem ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-gray-300 mb-1 font-semibold">Categoría *</label>
+                      <select
+                        required
+                        value={prodForm.categoria_id}
+                        onChange={(e) => setProdForm({ ...prodForm, categoria_id: e.target.value })}
+                        className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                      >
+                        <option value="">Selecciona categoría</option>
+                        {paginatedCategorias.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre} {!c.activo && '(inactiva)'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block text-gray-300 mb-1 font-semibold">Nombre del Producto *</label>
-                    <input
-                      type="text"
-                      required
-                      value={prodForm.nombre}
-                      onChange={(e) => setProdForm({ ...prodForm, nombre: e.target.value })}
-                      placeholder="Ej: Calza Sculpt Seamless"
-                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                    />
+                    <div>
+                      <label className="block text-gray-300 mb-1 font-semibold">Nombre del Producto *</label>
+                      <input
+                        type="text"
+                        required
+                        value={prodForm.nombre}
+                        onChange={(e) => setProdForm({ ...prodForm, nombre: e.target.value })}
+                        placeholder="Ej: Calza Sculpt Seamless"
+                        className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                      />
+                    </div>
                   </div>
+                ) : (
+                  <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/20 flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold block">
+                        Editando variantes y colores de:
+                      </span>
+                      <h4 className="text-white text-base font-bold font-editorial">
+                        {prodForm.nombre}
+                      </h4>
+                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-[#311B2B] text-[#D9A6B8] border border-[#D9A6B8]/30 font-semibold">
+                      {prodForm.variantes.length} {prodForm.variantes.length === 1 ? 'color disponible' : 'colores disponibles'}
+                    </span>
+                  </div>
+                )}
 
-                  {/* Variantes por Color, Imágenes y Tallas */}
-                  <div className="sm:col-span-2 space-y-3 pt-2 border-t border-[#D9A6B8]/20">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-white font-bold text-sm">
-                          Variantes por Color ({prodForm.variantes.length})
-                        </h4>
-                        <p className="text-[11px] text-gray-400">
-                          Cada color tiene sus propias fotografías de catálogo y disponibilidad de tallas.
-                        </p>
-                      </div>
+                {/* Variantes por Color, Imágenes y Tallas */}
+                <div className="space-y-3 pt-2 border-t border-[#D9A6B8]/20">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-white font-bold text-sm">
+                        {editingItem ? `Colores Actuales (${prodForm.variantes.length})` : `Variantes por Color (${prodForm.variantes.length})`}
+                      </h4>
+                      <p className="text-[11px] text-gray-400">
+                        {editingItem
+                          ? 'Edita las fotografías, tallas o tono de los colores configurados para este producto.'
+                          : 'Cada color tiene sus propias fotografías de catálogo y disponibilidad de tallas.'}
+                      </p>
+                    </div>
+                    {!editingItem && (
                       <button
                         type="button"
                         onClick={addVariant}
@@ -3009,292 +3225,298 @@ export const AdminPanel: React.FC = () => {
                         <Plus className="w-3.5 h-3.5" />
                         <span>Agregar Color</span>
                       </button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {prodForm.variantes.map((v, vIdx) => (
-                        <div
-                          key={vIdx}
-                          className="p-3.5 rounded-xl bg-[#1C0F18]/80 border border-[#D9A6B8]/25 space-y-3 shadow-inner"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className="w-4 h-4 rounded-full border border-white/40 shadow-inner"
-                                style={{ backgroundColor: v.color_hex || getColorHex(v.color) }}
-                              />
-                              <span className="font-bold text-white text-xs">
-                                Color #{vIdx + 1}: <span className="text-[#D9A6B8]">{v.color}</span>
-                              </span>
-                            </div>
-                            {prodForm.variantes.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeVariant(vIdx)}
-                                className="p-1 rounded-md text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                                title="Eliminar este color"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Nombre del color y selector rápido de paleta */}
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
-                                Colores estándar del catálogo:
-                              </span>
-                              {(colores.filter((c) => c.activo).length > 0
-                                ? colores.filter((c) => c.activo)
-                                : LUXURY_PALETTE
-                              ).map((pal) => (
-                                <button
-                                  key={pal.nombre}
-                                  type="button"
-                                  onClick={() => updateVariantColor(vIdx, pal.nombre, pal.hex)}
-                                  className={`w-4 h-4 rounded-full border transition-transform ${
-                                    v.color.toLowerCase() === pal.nombre.toLowerCase()
-                                      ? 'border-white scale-125 ring-1 ring-[#D9A6B8]'
-                                      : 'border-white/30 hover:scale-110'
-                                  }`}
-                                  style={{ backgroundColor: pal.hex }}
-                                  title={`${pal.nombre} (${pal.hex})`}
-                                />
-                              ))}
-                            </div>
-                            <input
-                              type="text"
-                              required
-                              value={v.color}
-                              onChange={(e) => updateVariantColor(vIdx, e.target.value)}
-                              placeholder="Nombre del color (Ej: Negro Onix, Rosa Palo...)"
-                              className="w-full p-2 rounded bg-[#261521] border border-[#D9A6B8]/30 text-white text-xs focus:outline-none focus:border-[#D9A6B8]"
-                            />
-                          </div>
-
-                          {/* Tallas disponibles para este color: (ÚNICA) o (XS,S,M,L,XL) */}
-                          <div>
-                            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
-                              <label className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider">
-                                Tallas para {v.color}:
-                              </label>
-                              <span className="text-[10px] text-gray-400">
-                                Modo: <strong className="text-white">{v.tallas?.toUpperCase().includes('ÚNICA') ? '(ÚNICA)' : (v.tallas || 'Seleccionar')}</strong>
-                              </span>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                              {/* Opción 1: Talla (ÚNICA) */}
-                              <button
-                                type="button"
-                                onClick={() => toggleVariantTalla(vIdx, 'ÚNICA')}
-                                className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border text-xs font-bold transition-all ${
-                                  v.tallas?.toUpperCase().includes('ÚNICA')
-                                    ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] shadow-md shadow-[#D9A6B8]/20 ring-1 ring-white/40'
-                                    : 'bg-[#261521] text-gray-300 border-white/15 hover:border-[#D9A6B8]/50 hover:bg-[#311B2B]'
-                                }`}
-                                title="Seleccionar talla (ÚNICA)"
-                              >
-                                <span
-                                  className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
-                                    v.tallas?.toUpperCase().includes('ÚNICA')
-                                      ? 'bg-[#1C0F18] border-[#1C0F18] text-[#D9A6B8]'
-                                      : 'border-gray-500'
-                                  }`}
-                                >
-                                  {v.tallas?.toUpperCase().includes('ÚNICA') && <Check className="w-2.5 h-2.5 stroke-[3]" />}
-                                </span>
-                                <span>(ÚNICA)</span>
-                              </button>
-
-                              <span className="text-[10px] text-gray-500 text-center font-bold uppercase sm:px-1">o</span>
-
-                              {/* Opción 2: Rango por tallas (XS, S, M, L, XL) */}
-                              <div className="flex-1 flex items-center gap-1.5">
-                                {STANDARD_SIZES.map((size) => {
-                                  const isUnica = v.tallas?.toUpperCase().includes('ÚNICA');
-                                  const currentSizes = (!isUnica && v.tallas)
-                                    ? v.tallas.split(',').map((s) => s.trim().toUpperCase())
-                                    : [];
-                                  const isChecked = currentSizes.includes(size);
-                                  return (
-                                    <button
-                                      key={size}
-                                      type="button"
-                                      onClick={() => toggleVariantTalla(vIdx, size)}
-                                      className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                        isChecked
-                                          ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] shadow-sm ring-1 ring-white/30'
-                                          : 'bg-[#261521] text-gray-400 border-white/10 hover:border-[#D9A6B8]/40 hover:text-white'
-                                      }`}
-                                      title={`Habilitar talla ${size} en color ${v.color}`}
-                                    >
-                                      <span
-                                        className={`w-3 h-3 rounded flex items-center justify-center border ${
-                                          isChecked ? 'bg-[#1C0F18] border-[#1C0F18] text-[#D9A6B8]' : 'border-gray-500'
-                                        }`}
-                                      >
-                                        {isChecked && <Check className="w-2 h-2 stroke-[3]" />}
-                                      </span>
-                                      <span>{size}</span>
-                                    </button>
-                                  );
-                                })}
-
-                                <button
-                                  type="button"
-                                  onClick={() => selectAllSizes(vIdx)}
-                                  className="text-[10px] px-2 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-gray-300 font-semibold border border-[#D9A6B8]/30 transition-all flex-shrink-0"
-                                  title="Seleccionar todas las tallas (XS a XL)"
-                                >
-                                  (Todas)
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Imágenes de este color */}
-                          <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider">
-                                Fotografías en color {v.color} ({v.imagenes.length}):
-                              </span>
-                              <label className="cursor-pointer text-[10px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1">
-                                <Upload className="w-3 h-3" />
-                                <span>+ Subir foto a {v.color}</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) await addImageToVariant(vIdx, file);
-                                  }}
-                                />
-                              </label>
-                            </div>
-
-                            {v.imagenes.length === 0 ? (
-                              <div className="p-3 text-center rounded-lg border border-dashed border-[#D9A6B8]/30 text-gray-400 text-[11px]">
-                                No hay fotos para este color. Haz clic en "+ Subir foto a {v.color}".
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 overflow-x-auto py-1">
-                                {v.imagenes.map((img, imgIdx) => (
-                                  <div
-                                    key={imgIdx}
-                                    className="relative group/thumb w-14 h-18 rounded-lg overflow-hidden border border-[#D9A6B8]/30 flex-shrink-0 bg-[#261521]"
-                                  >
-                                    <img
-                                      src={img}
-                                      alt={`Foto ${imgIdx + 1} de ${v.color}`}
-                                      className="w-full h-full object-cover"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => removeImageFromVariant(vIdx, imgIdx)}
-                                      className="absolute top-1 right-1 p-1 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md opacity-0 group-hover/thumb:opacity-100 transition-opacity"
-                                      title="Eliminar foto"
-                                    >
-                                      <Trash2 className="w-2.5 h-2.5" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-300 mb-1 font-semibold">Precio CLP *</label>
-                    <input
-                      type="number"
-                      required
-                      min={100}
-                      value={prodForm.precio}
-                      onChange={(e) => setProdForm({ ...prodForm, precio: Number(e.target.value) })}
-                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-300 mb-1 font-semibold">Precio Anterior CLP (opcional)</label>
-                    <input
-                      type="number"
-                      value={prodForm.precio_anterior}
-                      onChange={(e) => setProdForm({ ...prodForm, precio_anterior: e.target.value })}
-                      placeholder="Para mostrar precio tachado"
-                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-gray-300 mb-1 font-semibold">Etiqueta CRO (opcional)</label>
-                    <select
-                      value={prodForm.etiqueta}
-                      onChange={(e) => setProdForm({ ...prodForm, etiqueta: e.target.value })}
-                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                    >
-                      <option value="">Sin etiqueta</option>
-                      <option value="Top Ventas">Top Ventas</option>
-                      <option value="Últimas unidades">Últimas unidades</option>
-                      <option value="Nuevo">Nuevo</option>
-                    </select>
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-gray-300 mb-1 font-semibold">Descripción</label>
-                    <textarea
-                      rows={2}
-                      value={prodForm.descripcion}
-                      onChange={(e) => setProdForm({ ...prodForm, descripcion: e.target.value })}
-                      placeholder="Detalles sobre compresión, tejido y calce..."
-                      className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
-                    />
-                  </div>
-                </div>
-
-                {/* Subida y Compresión de Imagen via Canvas */}
-                <div className="pt-2 border-t border-[#D9A6B8]/20">
-                  <label className="block text-gray-300 mb-1.5 font-semibold">
-                    Fotografía del Producto (Compresor WebP integrado en navegador)
-                  </label>
-                  <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>Seleccionar Fotografía</span>
-                    </button>
-
-                    {imagePreview && (
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={imagePreview}
-                          alt="Previsualización"
-                          className="w-14 h-16 object-cover rounded border border-[#D9A6B8]/40 bg-[#1C0F18]"
-                        />
-                        <div className="text-[11px] text-gray-300">
-                          <span className="text-emerald-400 font-bold block">✓ Comprimida en WebP</span>
-                          {imageSizeKB && <span>Peso optimizado: {imageSizeKB} KB</span>}
-                        </div>
-                      </div>
                     )}
                   </div>
+
+                  <div className="space-y-3">
+                    {prodForm.variantes.map((v, vIdx) => (
+                      <div
+                        key={vIdx}
+                        className="p-3.5 rounded-xl bg-[#1C0F18]/80 border border-[#D9A6B8]/25 space-y-3 shadow-inner"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-4 h-4 rounded-full border border-white/40 shadow-inner"
+                              style={{ backgroundColor: v.color_hex || getColorHex(v.color) }}
+                            />
+                            <span className="font-bold text-white text-xs">
+                              Color #{vIdx + 1}: <span className="text-[#D9A6B8]">{v.color}</span>
+                            </span>
+                          </div>
+                          {prodForm.variantes.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeVariant(vIdx)}
+                              className="p-1 rounded-md text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                              title="Eliminar este color"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Nombre del color y selector rápido de paleta */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">
+                              Colores estándar del catálogo:
+                            </span>
+                            {(colores.filter((c) => c.activo).length > 0
+                              ? colores.filter((c) => c.activo)
+                              : LUXURY_PALETTE
+                            ).map((pal) => (
+                              <button
+                                key={pal.nombre}
+                                type="button"
+                                onClick={() => updateVariantColor(vIdx, pal.nombre, pal.hex)}
+                                className={`w-4 h-4 rounded-full border transition-transform ${
+                                  v.color.toLowerCase() === pal.nombre.toLowerCase()
+                                    ? 'border-white scale-125 ring-1 ring-[#D9A6B8]'
+                                    : 'border-white/30 hover:scale-110'
+                                }`}
+                                style={{ backgroundColor: pal.hex }}
+                                title={`${pal.nombre} (${pal.hex})`}
+                              />
+                            ))}
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            value={v.color}
+                            onChange={(e) => updateVariantColor(vIdx, e.target.value)}
+                            placeholder="Nombre del color (Ej: Negro Onix, Rosa Palo...)"
+                            className="w-full p-2 rounded bg-[#261521] border border-[#D9A6B8]/30 text-white text-xs focus:outline-none focus:border-[#D9A6B8]"
+                          />
+                        </div>
+
+                        {/* Tallas disponibles para este color: (ÚNICA) o (XS,S,M,L,XL) */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                            <label className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider">
+                              Tallas para {v.color}:
+                            </label>
+                            <span className="text-[10px] text-gray-400">
+                              Modo: <strong className="text-white">{v.tallas?.toUpperCase().includes('ÚNICA') ? '(ÚNICA)' : (v.tallas || 'Seleccionar')}</strong>
+                            </span>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            {/* Opción 1: Talla (ÚNICA) */}
+                            <button
+                              type="button"
+                              onClick={() => toggleVariantTalla(vIdx, 'ÚNICA')}
+                              className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border text-xs font-bold transition-all ${
+                                v.tallas?.toUpperCase().includes('ÚNICA')
+                                  ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] shadow-md shadow-[#D9A6B8]/20 ring-1 ring-white/40'
+                                  : 'bg-[#261521] text-gray-300 border-white/15 hover:border-[#D9A6B8]/50 hover:bg-[#311B2B]'
+                              }`}
+                              title="Seleccionar talla (ÚNICA)"
+                            >
+                              <span
+                                className={`w-3.5 h-3.5 rounded flex items-center justify-center border ${
+                                  v.tallas?.toUpperCase().includes('ÚNICA')
+                                    ? 'bg-[#1C0F18] border-[#1C0F18] text-[#D9A6B8]'
+                                    : 'border-gray-500'
+                                }`}
+                              >
+                                {v.tallas?.toUpperCase().includes('ÚNICA') && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                              </span>
+                              <span>(ÚNICA)</span>
+                            </button>
+
+                            <span className="text-[10px] text-gray-500 text-center font-bold uppercase sm:px-1">o</span>
+
+                            {/* Opción 2: Rango por tallas (XS, S, M, L, XL) */}
+                            <div className="flex-1 flex items-center gap-1.5">
+                              {STANDARD_SIZES.map((size) => {
+                                const isUnica = v.tallas?.toUpperCase().includes('ÚNICA');
+                                const currentSizes = (!isUnica && v.tallas)
+                                  ? v.tallas.split(',').map((s) => s.trim().toUpperCase())
+                                  : [];
+                                const isChecked = currentSizes.includes(size);
+                                return (
+                                  <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => toggleVariantTalla(vIdx, size)}
+                                    className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                      isChecked
+                                        ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] shadow-sm ring-1 ring-white/30'
+                                        : 'bg-[#261521] text-gray-400 border-white/10 hover:border-[#D9A6B8]/40 hover:text-white'
+                                    }`}
+                                    title={`Habilitar talla ${size} en color ${v.color}`}
+                                  >
+                                    <span
+                                      className={`w-3 h-3 rounded flex items-center justify-center border ${
+                                        isChecked ? 'bg-[#1C0F18] border-[#1C0F18] text-[#D9A6B8]' : 'border-gray-500'
+                                      }`}
+                                    >
+                                      {isChecked && <Check className="w-2 h-2 stroke-[3]" />}
+                                    </span>
+                                    <span>{size}</span>
+                                  </button>
+                                );
+                              })}
+
+                              <button
+                                type="button"
+                                onClick={() => selectAllSizes(vIdx)}
+                                className="text-[10px] px-2 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-gray-300 font-semibold border border-[#D9A6B8]/30 transition-all flex-shrink-0"
+                                title="Seleccionar todas las tallas (XS a XL)"
+                              >
+                                (Todas)
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Imágenes de este color */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[10px] text-gray-300 font-semibold uppercase tracking-wider">
+                              Fotografías en color {v.color} ({v.imagenes.length}):
+                            </span>
+                            <label className="cursor-pointer text-[10px] text-[#D9A6B8] hover:underline font-bold flex items-center gap-1">
+                              <Upload className="w-3 h-3" />
+                              <span>+ Subir foto a {v.color}</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) await addImageToVariant(vIdx, file);
+                                }}
+                              />
+                            </label>
+                          </div>
+
+                          {v.imagenes.length === 0 ? (
+                            <div className="p-3 text-center rounded-lg border border-dashed border-[#D9A6B8]/30 text-gray-400 text-[11px]">
+                              No hay fotos para este color. Haz clic en "+ Subir foto a {v.color}".
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 overflow-x-auto py-1">
+                              {v.imagenes.map((img, imgIdx) => (
+                                <div
+                                  key={imgIdx}
+                                  className="relative group/thumb w-14 h-18 rounded-lg overflow-hidden border border-[#D9A6B8]/30 flex-shrink-0 bg-[#261521]"
+                                >
+                                  <img
+                                    src={img}
+                                    alt={`Foto ${imgIdx + 1} de ${v.color}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => removeImageFromVariant(vIdx, imgIdx)}
+                                    className="absolute top-1 right-1 p-1 rounded-full bg-rose-600/90 hover:bg-rose-600 text-white shadow-md opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                                    title="Eliminar foto"
+                                  >
+                                    <Trash2 className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {!editingItem && (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D9A6B8]/20">
+                      <div>
+                        <label className="block text-gray-300 mb-1 font-semibold">Precio CLP *</label>
+                        <input
+                          type="number"
+                          required
+                          min={100}
+                          value={prodForm.precio}
+                          onChange={(e) => setProdForm({ ...prodForm, precio: Number(e.target.value) })}
+                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-300 mb-1 font-semibold">Precio Anterior CLP (opcional)</label>
+                        <input
+                          type="number"
+                          value={prodForm.precio_anterior}
+                          onChange={(e) => setProdForm({ ...prodForm, precio_anterior: e.target.value })}
+                          placeholder="Para mostrar precio tachado"
+                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-gray-300 mb-1 font-semibold">Etiqueta CRO (opcional)</label>
+                        <select
+                          value={prodForm.etiqueta}
+                          onChange={(e) => setProdForm({ ...prodForm, etiqueta: e.target.value })}
+                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                        >
+                          <option value="">Sin etiqueta</option>
+                          <option value="Top Ventas">Top Ventas</option>
+                          <option value="Últimas unidades">Últimas unidades</option>
+                          <option value="Nuevo">Nuevo</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-gray-300 mb-1 font-semibold">Descripción</label>
+                        <textarea
+                          rows={2}
+                          value={prodForm.descripcion}
+                          onChange={(e) => setProdForm({ ...prodForm, descripcion: e.target.value })}
+                          placeholder="Detalles sobre compresión, tejido y calce..."
+                          className="w-full p-2 rounded bg-[#1C0F18] border border-[#D9A6B8]/30 text-white focus:outline-none focus:border-[#D9A6B8]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Subida y Compresión de Imagen via Canvas */}
+                    <div className="pt-2 border-t border-[#D9A6B8]/20">
+                      <label className="block text-gray-300 mb-1.5 font-semibold">
+                        Fotografía del Producto (Compresor WebP integrado en navegador)
+                      </label>
+                      <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span>Seleccionar Fotografía</span>
+                        </button>
+
+                        {imagePreview && (
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={imagePreview}
+                              alt="Previsualización"
+                              className="w-14 h-16 object-cover rounded border border-[#D9A6B8]/40 bg-[#1C0F18]"
+                            />
+                            <div className="text-[11px] text-gray-300">
+                              <span className="text-emerald-400 font-bold block">✓ Comprimida en WebP</span>
+                              {imageSizeKB && <span>Peso optimizado: {imageSizeKB} KB</span>}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-[#D9A6B8]/20">
                   <button
@@ -3306,9 +3528,9 @@ export const AdminPanel: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-lg bg-[#D9A6B8] text-[#1C0F18] font-bold uppercase tracking-wider hover:bg-[#E6BAC8]"
+                    className="px-5 py-2 rounded-lg bg-[#D9A6B8] text-[#1C0F18] font-bold uppercase tracking-wider hover:bg-[#E6BAC8] transition-all"
                   >
-                    Guardar Producto
+                    {editingItem ? 'Guardar Cambios de Colores' : 'Guardar Producto'}
                   </button>
                 </div>
               </form>
@@ -3612,6 +3834,211 @@ export const AdminPanel: React.FC = () => {
               </form>
             )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Dedicado para Agregar Nuevo Color desde el Botón de la Cortina */}
+      {newColorModalProduct && (
+        <div className="fixed inset-0 z-50 overflow-hidden bg-black/85 backdrop-blur-md p-3 sm:p-6 md:p-8 flex justify-center items-center">
+          <div className="relative w-full max-w-xl glass-card rounded-2xl border border-[#D9A6B8]/30 bg-[#261521] shadow-2xl max-h-[90vh] flex flex-col overflow-hidden animate-fadeIn">
+            {/* Header del Modal */}
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-[#D9A6B8]/20 bg-[#261521] z-10 flex-shrink-0">
+              <div>
+                <span className="text-[10px] text-[#D9A6B8] uppercase tracking-wider font-bold block">
+                  Ingreso de Nuevo Color
+                </span>
+                <h3 className="font-editorial text-lg sm:text-xl font-bold text-white truncate max-w-sm sm:max-w-md">
+                  Agregar Color a: {newColorModalProduct.nombre}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNewColorModalProduct(null)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-white hover:bg-[#311B2B] transition-colors"
+                title="Cerrar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleSaveNewColor} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4 text-xs">
+              {/* 1. Selector de Color y Nombre */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
+                <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                  1. Color del Producto *
+                </label>
+
+                {/* Paleta rápida de colores estándar */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] text-gray-400 font-semibold">Colores de marca:</span>
+                  {(colores.filter((c) => c.activo).length > 0 ? colores.filter((c) => c.activo) : LUXURY_PALETTE).map((pal) => (
+                    <button
+                      key={pal.nombre}
+                      type="button"
+                      onClick={() => setNewColorForm((prev) => ({ ...prev, color: pal.nombre, color_hex: pal.hex }))}
+                      className={`w-5 h-5 rounded-full border transition-transform ${
+                        newColorForm.color.toLowerCase() === pal.nombre.toLowerCase()
+                          ? 'border-white scale-125 ring-2 ring-[#D9A6B8]'
+                          : 'border-white/30 hover:scale-110'
+                      }`}
+                      style={{ backgroundColor: pal.hex }}
+                      title={`${pal.nombre} (${pal.hex})`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-lg border border-white/40 flex-shrink-0 shadow-inner"
+                    style={{ backgroundColor: newColorForm.color_hex }}
+                  />
+                  <input
+                    type="text"
+                    required
+                    value={newColorForm.color}
+                    onChange={(e) => setNewColorForm((prev) => ({ ...prev, color: e.target.value }))}
+                    placeholder="Escribe el nombre del color (ej: Vino Tinto, Rosa Palo, Blanco Marfil...)"
+                    className="flex-1 p-2 rounded bg-[#261521] border border-[#D9A6B8]/30 text-white text-xs focus:outline-none focus:border-[#D9A6B8]"
+                  />
+                  <input
+                    type="color"
+                    value={newColorForm.color_hex}
+                    onChange={(e) => setNewColorForm((prev) => ({ ...prev, color_hex: e.target.value }))}
+                    className="w-8 h-8 p-0 rounded border border-[#D9A6B8]/30 bg-transparent cursor-pointer flex-shrink-0"
+                    title="Ajustar tono hex"
+                  />
+                </div>
+              </div>
+
+              {/* 2. Tallas Disponibles para este Color */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                    2. Tallas Disponibles *
+                  </label>
+                  <span className="text-[10px] text-gray-400">
+                    Seleccionadas: <strong className="text-white">{newColorForm.tallas || 'Ninguna'}</strong>
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  {/* Opción Única */}
+                  <button
+                    type="button"
+                    onClick={() => toggleNewColorTalla('ÚNICA')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border text-xs font-bold transition-all ${
+                      newColorForm.tallas.includes('ÚNICA')
+                        ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] shadow-md ring-1 ring-white/40'
+                        : 'bg-[#261521] text-gray-300 border-white/15 hover:border-[#D9A6B8]/50'
+                    }`}
+                  >
+                    <span>(ÚNICA)</span>
+                  </button>
+
+                  <span className="text-[10px] text-gray-500 text-center font-bold uppercase sm:px-1">o</span>
+
+                  {/* Tallas estándar XS - XL */}
+                  <div className="flex-1 flex items-center gap-1.5">
+                    {STANDARD_SIZES.map((size) => {
+                      const isChecked = !newColorForm.tallas.includes('ÚNICA') && newColorForm.tallas.split(',').map((s) => s.trim().toUpperCase()).includes(size);
+                      return (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleNewColorTalla(size)}
+                          className={`flex-1 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                            isChecked
+                              ? 'bg-[#D9A6B8] text-[#1C0F18] border-[#D9A6B8] ring-1 ring-white/30'
+                              : 'bg-[#261521] text-gray-400 border-white/10 hover:border-[#D9A6B8]/40 hover:text-white'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={selectAllNewColorSizes}
+                      className="text-[10px] px-2 py-1.5 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] text-gray-300 font-semibold border border-[#D9A6B8]/30 transition-all flex-shrink-0"
+                    >
+                      (Todas)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Fotografía en este Color */}
+              <div className="p-3.5 rounded-xl bg-[#1C0F18]/90 border border-[#D9A6B8]/25 space-y-2.5">
+                <label className="block text-gray-200 font-bold uppercase text-[10px] tracking-wider">
+                  3. Fotografía de la prenda en este color *
+                </label>
+
+                <input
+                  type="file"
+                  ref={newColorFileInputRef}
+                  accept="image/*"
+                  onChange={handleNewColorImageUpload}
+                  className="hidden"
+                />
+
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => newColorFileInputRef.current?.click()}
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#311B2B] hover:bg-[#D9A6B8] hover:text-[#1C0F18] border border-[#D9A6B8]/40 text-white font-semibold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>{newColorForm.imagen_base64 ? 'Cambiar Fotografía' : 'Subir Fotografía'}</span>
+                  </button>
+
+                  {newColorForm.imagen_base64 ? (
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={newColorForm.imagen_base64}
+                        alt="Previsualización nuevo color"
+                        className="w-14 h-16 object-cover rounded-lg border border-[#D9A6B8]/40 bg-[#1C0F18]"
+                      />
+                      <div className="text-[11px] text-gray-300">
+                        <span className="text-emerald-400 font-bold block">✓ Comprimida en WebP</span>
+                        {newColorForm.imageSizeKB && <span>Peso optimizado: {newColorForm.imageSizeKB} KB</span>}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-gray-400">
+                      Sube la fotografía de la prenda en color {newColorForm.color || 'nuevo'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="flex justify-end gap-3 pt-3 border-t border-[#D9A6B8]/20">
+                <button
+                  type="button"
+                  onClick={() => setNewColorModalProduct(null)}
+                  className="px-4 py-2 rounded-lg bg-[#311B2B] text-gray-300 hover:text-white"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingNewColor}
+                  className="px-5 py-2 rounded-lg bg-[#D9A6B8] text-[#1C0F18] font-bold uppercase tracking-wider hover:bg-[#E6BAC8] transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {savingNewColor ? (
+                    <span>Guardando color...</span>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 stroke-[3]" />
+                      <span>Guardar Nuevo Color</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
