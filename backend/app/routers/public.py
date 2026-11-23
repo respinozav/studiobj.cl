@@ -50,6 +50,27 @@ def get_public_productos(
 
     productos = query.order_by(Producto.created_at.desc()).all()
 
+    def get_etiqueta_priority(etiqueta: Optional[str]) -> int:
+        if not etiqueta:
+            return 4
+        norm = etiqueta.lower().strip()
+        norm = norm.replace("ú", "u").replace("é", "e").replace("á", "a").replace("ó", "o").replace("í", "i")
+        if "top" in norm:
+            return 1
+        if "ultima" in norm:
+            return 2
+        if "nuevo" in norm:
+            return 3
+        return 4
+
+    # Ordenar según prioridad CRO para cliente: 1. Top Ventas, 2. Últimas unidades, 3. Nuevo, 4. Resto
+    productos.sort(
+        key=lambda p: (
+            get_etiqueta_priority(p.etiqueta),
+            -(p.created_at.timestamp() if p.created_at else 0)
+        )
+    )
+
     import json
     response = []
     for p in productos:

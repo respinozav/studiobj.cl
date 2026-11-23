@@ -3,6 +3,7 @@ import { Search, ShoppingBag, ChevronLeft, ChevronRight, Check } from 'lucide-re
 import { Producto, ProductoVariante } from '../types';
 import { useCart } from '../context/CartContext';
 import { STANDARD_SIZES, getColorHex } from '../utils/colorsAndSizes';
+import { getBadgeStyles } from '../utils/croBadges';
 
 interface Props {
   producto: Producto;
@@ -118,9 +119,13 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
           loading="lazy"
         />
 
-        {/* Badge CRO Superior Izquierda (Top Ventas, Últimas unidades, Nuevo) */}
+        {/* Badge CRO Superior Izquierda (Top Ventas: Rosado, Últimas unidades: Amarillo, Nuevo: Verde) */}
         {producto.etiqueta && (
-          <div className="absolute top-2.5 left-2.5 z-10 px-2.5 py-0.5 rounded-full bg-[#1C0F18]/80 backdrop-blur-md border border-white/10 text-[10px] sm:text-[11px] font-medium text-white shadow-md">
+          <div
+            className={`absolute top-2.5 left-2.5 z-10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wide shadow-md uppercase transition-all duration-200 ${getBadgeStyles(
+              producto.etiqueta
+            )}`}
+          >
             {producto.etiqueta}
           </div>
         )}

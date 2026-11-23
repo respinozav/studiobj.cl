@@ -46,6 +46,7 @@ const SYSTEM_MODULES = [
   { id: 'roles', label: 'Roles', desc: 'Definición de roles y asignación de menús' },
 ];
 import { STANDARD_SIZES, LUXURY_PALETTE, getColorHex } from '../utils/colorsAndSizes';
+import { getBadgeStyles } from '../utils/croBadges';
 
 export interface ProductVariantItem {
   color: string;
@@ -2147,7 +2148,11 @@ export const AdminPanel: React.FC = () => {
                             </span>
                             <div className="flex items-center gap-1.5">
                               {p.etiqueta && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#311B2B] text-[#D9A6B8] border border-[#D9A6B8]/30 font-bold whitespace-nowrap">
+                                <span
+                                  className={`text-[9px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shadow-sm ${getBadgeStyles(
+                                    p.etiqueta
+                                  )}`}
+                                >
                                   {p.etiqueta}
                                 </span>
                               )}
@@ -2427,7 +2432,11 @@ export const AdminPanel: React.FC = () => {
                                 {/* 5. Etiqueta */}
                                 <td className="p-3">
                                   {p.etiqueta ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-[#311B2B] text-[#D9A6B8] text-[10px] font-bold border border-[#D9A6B8]/30 whitespace-nowrap">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shadow-sm ${getBadgeStyles(
+                                        p.etiqueta
+                                      )}`}
+                                    >
                                       {p.etiqueta}
                                     </span>
                                   ) : (

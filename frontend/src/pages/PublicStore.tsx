@@ -10,6 +10,7 @@ import { Footer } from '../components/Footer';
 import { Categoria, Producto, HeroTemplate } from '../types';
 import { api } from '../services/api';
 import { useLoading } from '../context/LoadingContext';
+import { sortProductosByEtiqueta } from '../utils/croBadges';
 
 const getCachedHero = (): HeroTemplate | null => {
   try {
@@ -48,8 +49,9 @@ export const PublicStore: React.FC = () => {
             ]);
             if (catsRes.status === 'fulfilled') setCategorias(catsRes.value);
             if (prodsRes.status === 'fulfilled') {
-              setAllProductos(prodsRes.value);
-              setProductos(prodsRes.value);
+              const sorted = sortProductosByEtiqueta(prodsRes.value);
+              setAllProductos(sorted);
+              setProductos(sorted);
             }
             if (heroRes.status === 'fulfilled' && heroRes.value) {
               setHeroData(heroRes.value);
@@ -137,7 +139,7 @@ export const PublicStore: React.FC = () => {
       const filtered = selectedCategoriaId
         ? allProductos.filter((p) => p.categoria_id === selectedCategoriaId)
         : allProductos;
-      setProductos(filtered);
+      setProductos(sortProductosByEtiqueta(filtered));
       setIsTransitioning(false);
     }, 120);
 
@@ -153,7 +155,7 @@ export const PublicStore: React.FC = () => {
       .getPublicProductos(selectedCategoriaId || undefined)
       .then((data) => {
         if (isCurrent) {
-          setProductos(data);
+          setProductos(sortProductosByEtiqueta(data));
         }
       })
       .catch((e) => console.warn('Sync background error', e));
