@@ -55,10 +55,29 @@ export const sortProductosByEtiqueta = (productos: Producto[]): Producto[] => {
 };
 
 /**
- * Retorna las clases de estilo homogéneas para las etiquetas CRO en formato pill "fino":
- * Todas las etiquetas comparten el diseño y color base rosado/ciruela de la página (#311B2B + #D9A6B8)
+ * Retorna las clases de estilo para las etiquetas:
+ * - Últimas unidades: Amarillo original (amber-950 + borde ámbar + texto amarillo)
+ * - Nuevo: Verde original (emerald-950 + borde verde + texto verde)
+ * - Top Ventas / Otros: Rosado institucional (#311B2B + #D9A6B8)
  */
 export const getBadgeStyles = (etiqueta?: string | null): string => {
   if (!etiqueta) return '';
-  return 'bg-[#311B2B]/90 text-[#E8B2C4] border border-[#D9A6B8]/50 backdrop-blur-md shadow-[0_2px_8px_rgba(217,166,184,0.15)]';
+  const norm = etiqueta
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+
+  // 1. Últimas unidades: Amarillo original
+  if (norm.includes('ultima')) {
+    return 'bg-amber-950/80 text-amber-300 border border-amber-500/50 shadow-[0_2px_8px_rgba(245,158,11,0.15)]';
+  }
+
+  // 2. Nuevo: Verde original
+  if (norm.includes('nuevo')) {
+    return 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 shadow-[0_2px_8px_rgba(16,185,129,0.15)]';
+  }
+
+  // 3. Top Ventas / Base rosada institucional
+  return 'bg-[#311B2B]/90 text-[#E8B2C4] border border-[#D9A6B8]/50 shadow-[0_2px_8px_rgba(217,166,184,0.15)]';
 };

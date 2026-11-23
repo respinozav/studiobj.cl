@@ -1,5 +1,5 @@
 import React from 'react';
-import { isTopVentas } from '../utils/croBadges';
+import { isTopVentas, getBadgeStyles } from '../utils/croBadges';
 
 interface ProductBadgeProps {
   etiqueta?: string | null;
@@ -18,25 +18,25 @@ export const ProductBadge: React.FC<ProductBadgeProps> = ({
   const sizeClasses =
     size === 'sm' ? 'px-2 py-0.5 text-[9px]' : 'px-2.5 py-0.5 text-[10px] sm:text-[11px]';
 
-  // Si es "Top Ventas", renderizamos con el haz de cometa de alta intensidad y brillo perimétrico constante
+  // Si es "Top Ventas", renderizamos con el haz de luz único, fino, nítido y a frecuencia constante
   if (isTop) {
     return (
       <div
-        className={`relative inline-flex items-center justify-center rounded-full select-none shadow-[0_0_16px_rgba(217,166,184,0.65),0_0_6px_rgba(255,255,255,0.4)] ${className}`}
+        className={`relative inline-flex items-center justify-center rounded-full select-none shadow-[0_0_10px_rgba(217,166,184,0.35)] ${className}`}
       >
-        {/* Halo difuminado exterior de alta intensidad tipo loading */}
+        {/* Halo difuminado exterior suave y refinado */}
         <div
           aria-hidden="true"
-          className="absolute -inset-1 rounded-full blur-[6px] bg-[#D9A6B8]/55 opacity-90 animate-pulse-subtle pointer-events-none"
+          className="absolute -inset-0.5 rounded-full blur-[4px] bg-[#D9A6B8]/35 opacity-90 animate-pulse-subtle pointer-events-none"
         />
 
-        {/* SVG de contorno perimétrico a velocidad y frecuencia 100% constantes sin desvanecimiento en bordes */}
+        {/* SVG de contorno perimétrico: 1 sola línea nítida y continua a velocidad constante */}
         <svg
           aria-hidden="true"
           className="absolute inset-0 w-full h-full pointer-events-none rounded-full"
           style={{ overflow: 'visible' }}
         >
-          {/* Borde base nítido del contorno */}
+          {/* Borde base sutil rosado */}
           <rect
             x="0"
             y="0"
@@ -44,51 +44,11 @@ export const ProductBadge: React.FC<ProductBadgeProps> = ({
             height="100%"
             rx="9999"
             fill="none"
-            stroke="rgba(217, 166, 184, 0.45)"
-            strokeWidth="1.5"
+            stroke="rgba(217, 166, 184, 0.4)"
+            strokeWidth="1"
           />
 
-          {/* 1. Capa de resplandor difuso exterior (Cola y Halo) - Intenso rosado #D9A6B8 */}
-          <rect
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            rx="9999"
-            fill="none"
-            stroke="#D9A6B8"
-            strokeWidth="4.5"
-            strokeLinecap="round"
-            pathLength="100"
-            strokeDasharray="36 64"
-            className="animate-border-beam"
-            style={{
-              filter: 'drop-shadow(0 0 6px #D9A6B8) drop-shadow(0 0 12px rgba(217, 166, 184, 0.85))',
-              opacity: 0.95,
-            }}
-          />
-
-          {/* 2. Cuerpo del cometa - Rosa claro luminoso #F2D3DF */}
-          <rect
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            rx="9999"
-            fill="none"
-            stroke="#F2D3DF"
-            strokeWidth="3"
-            strokeLinecap="round"
-            pathLength="100"
-            strokeDasharray="22 78"
-            className="animate-border-beam"
-            style={{
-              filter: 'drop-shadow(0 0 4px #F2D3DF)',
-              opacity: 1,
-            }}
-          />
-
-          {/* 3. Cabeza del cometa - Luz blanca pura brillante #FFFFFF de máxima intensidad */}
+          {/* Único haz de luz cometa fino (1.5px) con núcleo blanco y resplandor rosado */}
           <rect
             x="0"
             y="0"
@@ -97,14 +57,14 @@ export const ProductBadge: React.FC<ProductBadgeProps> = ({
             rx="9999"
             fill="none"
             stroke="#FFFFFF"
-            strokeWidth="2"
+            strokeWidth="1.5"
             strokeLinecap="round"
             pathLength="100"
-            strokeDasharray="10 90"
+            strokeDasharray="24 76"
             className="animate-border-beam"
             style={{
-              filter: 'drop-shadow(0 0 4px #FFFFFF) drop-shadow(0 0 8px rgba(255, 255, 255, 0.95))',
-              opacity: 1,
+              filter:
+                'drop-shadow(0 0 2px #FFFFFF) drop-shadow(0 0 5px #D9A6B8) drop-shadow(0 0 9px rgba(217, 166, 184, 0.8))',
             }}
           />
         </svg>
@@ -119,10 +79,12 @@ export const ProductBadge: React.FC<ProductBadgeProps> = ({
     );
   }
 
-  // Todas las demás etiquetas (Últimas unidades, Nuevo, etc.) comparten el mismo diseño y color base
+  // Últimas unidades (Amarillo) y Nuevo (Verde) en su formato original fino de alta distinción
   return (
     <span
-      className={`inline-flex items-center ${sizeClasses} rounded-full bg-[#311B2B]/90 text-[#E8B2C4] border border-[#D9A6B8]/50 font-semibold tracking-normal backdrop-blur-md shadow-[0_2px_8px_rgba(217,166,184,0.15)] whitespace-nowrap select-none ${className}`}
+      className={`inline-flex items-center ${sizeClasses} rounded-full font-semibold tracking-normal backdrop-blur-md whitespace-nowrap select-none ${getBadgeStyles(
+        etiqueta
+      )} ${className}`}
     >
       {etiqueta}
     </span>
