@@ -2149,7 +2149,7 @@ export const AdminPanel: React.FC = () => {
                             <div className="flex items-center gap-1.5">
                               {p.etiqueta && (
                                 <span
-                                  className={`text-[9px] px-2 py-0.5 rounded-full font-bold whitespace-nowrap shadow-sm ${getBadgeStyles(
+                                  className={`text-[9px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${getBadgeStyles(
                                     p.etiqueta
                                   )}`}
                                 >
@@ -2433,7 +2433,7 @@ export const AdminPanel: React.FC = () => {
                                 <td className="p-3">
                                   {p.etiqueta ? (
                                     <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shadow-sm ${getBadgeStyles(
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${getBadgeStyles(
                                         p.etiqueta
                                       )}`}
                                     >

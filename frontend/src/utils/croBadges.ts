@@ -42,10 +42,10 @@ export const sortProductosByEtiqueta = (productos: Producto[]): Producto[] => {
 };
 
 /**
- * Retorna las clases de estilo para las etiquetas CRO:
- * - Top Ventas: Rosado institucional (#D9A6B8) de la página con texto oscuro de alto contraste
- * - Últimas unidades: Amarillo (amber-400) con texto oscuro para urgencia
- * - Nuevo: Verde (emerald-500) con texto blanco para novedad
+ * Retorna las clases de estilo para las etiquetas CRO en formato pill "fino" (dark glassmorphism):
+ * - Top Ventas: Fondo ciruela/rosado oscuro (#311B2B) + Borde fino rosado (#D9A6B8) + Texto rosado
+ * - Últimas unidades: Fondo ámbar oscuro + Borde fino amarillo/ámbar + Texto amarillo
+ * - Nuevo: Fondo esmeralda oscuro + Borde fino verde + Texto verde esmeralda
  */
 export const getBadgeStyles = (etiqueta?: string | null): string => {
   if (!etiqueta) return '';
@@ -57,19 +57,19 @@ export const getBadgeStyles = (etiqueta?: string | null): string => {
 
   // 1. Top Ventas: Rosado institucional (#D9A6B8, color de la página)
   if (norm.includes('top')) {
-    return 'bg-[#D9A6B8] text-[#1C0F18] border border-[#F2D3DF]/60 shadow-[0_2px_10px_rgba(217,166,184,0.35)]';
+    return 'bg-[#311B2B]/90 text-[#E8B2C4] border border-[#D9A6B8]/50 backdrop-blur-md shadow-[0_2px_8px_rgba(217,166,184,0.15)]';
   }
 
-  // 2. Últimas unidades: Amarillo (amber-400 con texto oscuro de alta legibilidad)
+  // 2. Últimas unidades: Amarillo (amber-950 fondo + borde ámbar + texto amarillo)
   if (norm.includes('ultima')) {
-    return 'bg-amber-400 text-stone-950 border border-amber-300/80 shadow-[0_2px_10px_rgba(251,191,36,0.35)]';
+    return 'bg-amber-950/80 text-amber-300 border border-amber-500/50 backdrop-blur-md shadow-[0_2px_8px_rgba(245,158,11,0.15)]';
   }
 
-  // 3. Nuevo: Verde (emerald-500)
+  // 3. Nuevo: Verde (emerald-950 fondo + borde esmeralda + texto verde)
   if (norm.includes('nuevo')) {
-    return 'bg-emerald-500 text-white border border-emerald-400/60 shadow-[0_2px_10px_rgba(16,185,129,0.35)]';
+    return 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 backdrop-blur-md shadow-[0_2px_8px_rgba(16,185,129,0.15)]';
   }
 
   // Fallback para cualquier otra etiqueta personalizada
-  return 'bg-[#1C0F18]/85 text-white border border-white/10 shadow-md';
+  return 'bg-[#1C0F18]/85 text-white/90 border border-white/15 backdrop-blur-md shadow-sm';
 };

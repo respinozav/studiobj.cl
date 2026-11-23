@@ -122,7 +122,7 @@ export const ProductCard: React.FC<Props> = ({ producto, onOpenLightbox }) => {
         {/* Badge CRO Superior Izquierda (Top Ventas: Rosado, Últimas unidades: Amarillo, Nuevo: Verde) */}
         {producto.etiqueta && (
           <div
-            className={`absolute top-2.5 left-2.5 z-10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold tracking-wide shadow-md uppercase transition-all duration-200 ${getBadgeStyles(
+            className={`absolute top-2.5 left-2.5 z-10 px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold tracking-normal transition-all duration-200 ${getBadgeStyles(
               producto.etiqueta
             )}`}
           >
