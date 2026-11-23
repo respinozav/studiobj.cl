@@ -1,6 +1,19 @@
 import { Producto } from '../types';
 
 /**
+ * Retorna true si la etiqueta corresponde a "Top Ventas"
+ */
+export const isTopVentas = (etiqueta?: string | null): boolean => {
+  if (!etiqueta) return false;
+  const norm = etiqueta
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  return norm.includes('top');
+};
+
+/**
  * Retorna la prioridad numérica de ordenamiento para clientes:
  * 1 -> Top Ventas
  * 2 -> Últimas unidades
@@ -42,34 +55,10 @@ export const sortProductosByEtiqueta = (productos: Producto[]): Producto[] => {
 };
 
 /**
- * Retorna las clases de estilo para las etiquetas CRO en formato pill "fino" (dark glassmorphism):
- * - Top Ventas: Fondo ciruela/rosado oscuro (#311B2B) + Borde fino rosado (#D9A6B8) + Texto rosado
- * - Últimas unidades: Fondo ámbar oscuro + Borde fino amarillo/ámbar + Texto amarillo
- * - Nuevo: Fondo esmeralda oscuro + Borde fino verde + Texto verde esmeralda
+ * Retorna las clases de estilo homogéneas para las etiquetas CRO en formato pill "fino":
+ * Todas las etiquetas comparten el diseño y color base rosado/ciruela de la página (#311B2B + #D9A6B8)
  */
 export const getBadgeStyles = (etiqueta?: string | null): string => {
   if (!etiqueta) return '';
-  const norm = etiqueta
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
-
-  // 1. Top Ventas: Rosado institucional (#D9A6B8, color de la página)
-  if (norm.includes('top')) {
-    return 'bg-[#311B2B]/90 text-[#E8B2C4] border border-[#D9A6B8]/50 backdrop-blur-md shadow-[0_2px_8px_rgba(217,166,184,0.15)]';
-  }
-
-  // 2. Últimas unidades: Amarillo (amber-950 fondo + borde ámbar + texto amarillo)
-  if (norm.includes('ultima')) {
-    return 'bg-amber-950/80 text-amber-300 border border-amber-500/50 backdrop-blur-md shadow-[0_2px_8px_rgba(245,158,11,0.15)]';
-  }
-
-  // 3. Nuevo: Verde (emerald-950 fondo + borde esmeralda + texto verde)
-  if (norm.includes('nuevo')) {
-    return 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 backdrop-blur-md shadow-[0_2px_8px_rgba(16,185,129,0.15)]';
-  }
-
-  // Fallback para cualquier otra etiqueta personalizada
-  return 'bg-[#1C0F18]/85 text-white/90 border border-white/15 backdrop-blur-md shadow-sm';
+  return 'bg-[#311B2B]/90 text-[#E8B2C4] border border-[#D9A6B8]/50 backdrop-blur-md shadow-[0_2px_8px_rgba(217,166,184,0.15)]';
 };

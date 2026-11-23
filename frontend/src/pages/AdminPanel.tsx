@@ -46,7 +46,7 @@ const SYSTEM_MODULES = [
   { id: 'roles', label: 'Roles', desc: 'Definición de roles y asignación de menús' },
 ];
 import { STANDARD_SIZES, LUXURY_PALETTE, getColorHex } from '../utils/colorsAndSizes';
-import { getBadgeStyles } from '../utils/croBadges';
+import { ProductBadge } from '../components/ProductBadge';
 
 export interface ProductVariantItem {
   color: string;
@@ -2148,13 +2148,7 @@ export const AdminPanel: React.FC = () => {
                             </span>
                             <div className="flex items-center gap-1.5">
                               {p.etiqueta && (
-                                <span
-                                  className={`text-[9px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${getBadgeStyles(
-                                    p.etiqueta
-                                  )}`}
-                                >
-                                  {p.etiqueta}
-                                </span>
+                                <ProductBadge etiqueta={p.etiqueta} size="sm" />
                               )}
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
@@ -2432,13 +2426,7 @@ export const AdminPanel: React.FC = () => {
                                 {/* 5. Etiqueta */}
                                 <td className="p-3">
                                   {p.etiqueta ? (
-                                    <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${getBadgeStyles(
-                                        p.etiqueta
-                                      )}`}
-                                    >
-                                      {p.etiqueta}
-                                    </span>
+                                    <ProductBadge etiqueta={p.etiqueta} size="sm" />
                                   ) : (
                                     <span className="text-gray-500">-</span>
                                   )}
