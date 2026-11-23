@@ -123,3 +123,26 @@
   animation: pulse-subtle 3s ease-in-out infinite !important;
   will-change: transform, opacity;
 }
+
+/* Animación de Haz Perimétrico a Velocidad y Frecuencia Uniforme Constante */
+@keyframes border-beam {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+@-webkit-keyframes border-beam {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+
+.animate-border-beam {
+  animation: border-beam 2.6s linear infinite !important;
+  will-change: stroke-dashoffset;
+}
